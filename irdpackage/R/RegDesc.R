@@ -10,12 +10,19 @@ RegDesc = R6::R6Class("RegDesc",
     #' @param desired_range (NULL | `numeric(2)`) \cr
     #' The desired predicted outcome. If NULL (default), the current predicted value of `predictor` for `x_interest` is used as desired prediction.
     #' Alternatively, a vector with two numeric values that specify an outcome interval. This outcome interval needs to include the predicted value of `x_interest`.
+    #' @param fixed_features (`character()` | NULL)
+    #'   Names of features that are kept fixed (immutable) when constructing the descriptor.
+    #' @param desired_class (`character(1)` | NULL)
+    #'   Desired class for classification models. NULL for regression.
+    #' @param method (`character(1)` | NULL)
+    #'   Name of the method used to generate the regional descriptor.
     initialize = function(box,
                           predictor,
                           x_interest,
                           desired_range,
                           fixed_features = NULL,
-      desired_class = NULL, method = NULL) {
+                          desired_class = NULL,
+                          method = NULL){
       # input checks
       assert_class(box, "ParamSet")
       assert_class(predictor, "Predictor")
@@ -176,8 +183,10 @@ RegDesc = R6::R6Class("RegDesc",
         stop("`$method` is read only", call. = FALSE)
       }
     },
-    #' @field fixed_features (`character(1)`) \cr
-    #'   Method with which regional descriptors were generated.
+    #' @field fixed_features (`character()` | `NULL`) \cr
+    #'   Names of features that were held fixed (immutable) during construction
+    #'   of the regional descriptor. For these features, the descriptor interval
+    #'   equals the value in `x_interest`
     fixed_features = function(value) {
       if (missing(value)) {
         private$.fixed_features
