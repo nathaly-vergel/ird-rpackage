@@ -6,6 +6,9 @@ tf = tf$compat$v1
 #' @export
 Maire = R6::R6Class("Maire", inherit = RegDescMethod,
   public = list(
+    #' @param predictor (`iml::Predictor`) \cr
+    #' The object (created with `iml::Predictor$new()`) holding the machine
+    #' learning model and the data.
     #' @param num_of_iterations (`integer(1)`) \cr Number of iterations for ADAM optimizer.
     #' Default is 10000.
     #' @param convergence (`logical(1)`) \cr Whether `num_of_iterations` is conducted after
@@ -34,13 +37,26 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
     #' should have a value close to 0 (default 0.02).
     #' @param ch (`numeric(1)`) \cr Parameter for approximation of indicator function,
     #' should have a value close to 1 (default 0.82)
+    #' @param quiet (`logical(1)`) Supress messages.
     #' @importFrom keras k_placeholder
     #' @import tensorflow
     #' @return (RegDesc) Hyperbox
-    initialize = function(predictor, num_of_iterations = 1000L, convergence = FALSE,
-      strategy = "traindata", num_sampled_points = NULL, lambda_val_1 = 20, lambda_val = 100L,
-      threshold = 0.9999999, c1 = 0.4, c2 = 15, c3 = 0.6, c4 = 0.5, c5 = 0.5,
-      cl = 0.02, ch = 0.82, quiet = FALSE) {
+    initialize = function(predictor,
+                          num_of_iterations = 1000L,
+                          convergence = FALSE,
+                          strategy = "traindata",
+                          num_sampled_points = NULL,
+                          lambda_val_1 = 20,
+                          lambda_val = 100L,
+                          threshold = 0.9999999,
+                          c1 = 0.4,
+                          c2 = 15,
+                          c3 = 0.6,
+                          c4 = 0.5,
+                          c5 = 0.5,
+                          cl = 0.02,
+                          ch = 0.82,
+                          quiet = FALSE) {
 
       super$initialize(predictor, quiet)
       checkmate::assert_integerish(num_sampled_points, null.ok = TRUE)
@@ -420,8 +436,9 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
       private$.history = history
     },
 
-    #' @param sampled_points (Tensor) \cr currently used dataset
-    #' @param f_values_sampled_points (Tensor) \cr predicted labels of sampled points
+#    #' Internal loss function for the Maire optimizer.
+#    #' @param sampled_points (Tensor) \cr currently used dataset
+#    #' @param f_values_sampled_points (Tensor) \cr predicted labels of sampled points
     loss = function(sampled_points, f_values_sampled_points) {
       # true precision
       analytic_prec = tf$reduce_sum(
