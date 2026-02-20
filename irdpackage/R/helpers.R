@@ -268,7 +268,7 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
     }
     ps_sub = param_set$clone(deep = TRUE)
     ps_sub$subset(i_name)
-    grid1d = paradox:::generate_design_grid(ps_sub, resolution = resolution)$data
+    grid1d = paradox::generate_design_grid(ps_sub, resolution = resolution)$data
     x_interest_sub = data.table::copy(x_interest)
     x_interest_sub[, (i_name):=NULL]
     dt = data.table::data.table(grid1d, x_interest_sub)
