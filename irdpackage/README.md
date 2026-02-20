@@ -1,4 +1,4 @@
-# irgn: An R package for Interpretable Regional Descriptors 
+# irdpackage: An R package for Interpretable Regional Descriptors 
 
 The `irdpackage` package provides various (model-agnostic)
 methods for interpretable regional descriptors (IRD) via a unified R6-based interface.
