@@ -50,7 +50,7 @@ get_box = function(pred) {
     dat <- pred$model$data
   }
 
-  current_box = irgn:::make_param_set(pred$data$get.x())
+  current_box = make_param_set(pred$data$get.x())
   terminated = FALSE
   while (!terminated) {
     if (id_node(node) == i) {
