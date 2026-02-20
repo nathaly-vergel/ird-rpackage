@@ -4,18 +4,26 @@
 Prim = R6::R6Class("Prim", inherit = RegDescMethod,
 
   public = list(
+    #' @param predictor (`iml::Predictor`) \cr
+    #' The object (created with `iml::Predictor$new()`) holding the machine
+    #' learning model and the data.
     #' @param subbox_relsize (`numeric(1)`) \cr Number of proposed values
     #' to search over for numeric features. If increased, more upper and lower values are
     #' inspected. Default = 0.05 meaning that each subbox covers 5 % of the data points in
     #' a box.
-    #' #' @param strategy (`character(1)`)\cr
+    #' @param strategy (`character(1)`)\cr
     #' Either `traindata` using training data or `sampled` using newly sampled data in
     #' ICE curve identified box.
     #' @param num_sampled_points (`numeric(1)`)\cr Only considered if `strategy = 'sampled'`.
     #' The number of samples randomly drawn at the beginning.
+    #' @param quiet (`logical(1)`) Supress messages.
     #' @return (RegDesc) Hyperbox
     #' @export
-    initialize = function(predictor, subbox_relsize = 0.05, strategy = "traindata", num_sampled_points = 500L, quiet = FALSE) {
+    initialize = function(predictor,
+                          subbox_relsize = 0.05,
+                          strategy = "traindata",
+                          num_sampled_points = 500L,
+                          quiet = FALSE) {
       # input checks
       super$initialize(predictor, quiet)
       checkmate::assert_numeric(subbox_relsize, lower = 0, upper = 1)
