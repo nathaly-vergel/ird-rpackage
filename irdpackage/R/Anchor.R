@@ -13,11 +13,17 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
     #' discretized into bins.
     #' @param bins (list) The discretization bins. Requires one list element for
     #' each feature (same ordering as in predictor$data).
+    #' @param quiet (logical(1)) Suppress messages.
     #' Immutable features defined in `fixed_features` are automatially set to integer().
     #' @param ... \cr Further hyperparameters of anchors (see `anchors::anchors`).
     #' @return (RegDesc) Hyperbox
     #' @import anchors
-    initialize = function(predictor, tau = 1, initialize_bins = TRUE, bins = NULL, quiet = FALSE, ...) {
+    initialize = function(predictor,
+                          tau = 1,
+                          initialize_bins = TRUE,
+                          bins = NULL,
+                          quiet = FALSE,
+                          ...) {
 
       super$initialize(predictor, quiet)
       if (!is.null(bins)) {
