@@ -59,6 +59,7 @@ RegDesc = R6::R6Class("RegDesc",
     },
 
     #' @description Prints the `RegDesc` object.
+    #' @param digits (`integer(1)`) Number of decimal places used when printing numeric box boundaries.
     print = function(digits = 2L) {
       desired = private$.desired_range
       cat(nrow(private$.data), "Regional Descriptors \n \n")
