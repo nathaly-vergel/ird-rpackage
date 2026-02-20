@@ -22,7 +22,8 @@ Imports:
     R6,
     anchors,
     keras,
-    tensorflow
+    tensorflow,
+    ggplot2
 Suggests: 
     knitr,
     rmarkdown,
