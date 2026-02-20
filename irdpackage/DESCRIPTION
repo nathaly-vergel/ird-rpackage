@@ -29,7 +29,11 @@ Suggests:
     rmarkdown,
     MASS,
     StatMatch,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    cowplot,
+    partykit, 
+    randomForest, 
+    rpart
 License: LGPL-3
 Encoding: UTF-8
 LazyData: true
