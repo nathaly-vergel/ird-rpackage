@@ -5,6 +5,9 @@
 #' @export
 PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
   public = list(
+    #' @param predictor (`iml::Predictor`) \cr
+    #' The object (created with `iml::Predictor$new()`) holding the machine
+    #' learning model and the data.
     #' @param subbox_relsize (`numeric(1)`) \cr Number of proposed values
     #' to search over for numeric features. If increased, more upper and lower values are
     #' inspected. Default = 30 meaning that each subbox covers 1/30 = 3.3 % of whole observed
@@ -16,10 +19,14 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
     #'  multiple subboxes have 0 impurity in order to break ties. Options are
     #'  `'random'` to choose randomly, `'preddist'` to choose box with lowest average
     #'  distance to prediction of `x_interest`. Default is `'preddist'`.
-    #'
+    #' @param quiet (`logical(1)`) Supress messages.
     #' @return (RegDesc) Hyperbox
-    initialize = function(predictor, subbox_relsize = 0.05,
-      evaluation_n = 1000, paste_alpha = 0.05, strategy_ties = "preddist", quiet = FALSE) {
+    initialize = function(predictor,
+                          subbox_relsize = 0.05,
+                          evaluation_n = 1000,
+                          paste_alpha = 0.05,
+                          strategy_ties = "preddist",
+                          quiet = FALSE) {
       # input checks
       super$initialize(predictor, quiet)
       checkmate::assert_numeric(subbox_relsize, lower = 0, upper = 1)
