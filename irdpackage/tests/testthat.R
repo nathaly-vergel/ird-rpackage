@@ -1,4 +1,4 @@
 library(testthat)
-library(irgn)
+library(irdpackage)
 
-test_check("irgn")
+test_check("irdpackage")
