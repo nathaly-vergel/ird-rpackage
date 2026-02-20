@@ -9,8 +9,8 @@ Description: IRDs are hyperboxes that describe how an observation's feature valu
     Friedman and Fisher (1999)  <doi:10.1023/A:1008894516817>, Ribeiro et al. (2018) <doi:10.1609/aaai.v32i1.11491>
     and Sharma et al. (2021) <doi:10.1007/978-3-030-84060-0_21>.
     Once generated, the boxes can be postprocessed, analyzed and visualized by provided functionalities.
-URL: https://github.com/dandls/irgn/
-BugReports: https://github.com/dandls/irgn/issues
+URL: https://github.com/slds-lmu/supplementary_2023_ird/tree/main/irdpackage
+BugReports: https://github.com/slds-lmu/supplementary_2023_ird/issues
 Depends: 
     R (>= 3.1.0)
 Imports:
