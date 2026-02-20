@@ -130,6 +130,9 @@ RegDesc = R6::R6Class("RegDesc",
       return(c(precision = precision, coverage = coverage))
     }),
   active = list(
+    #' @field desired_range (`numeric(2)`)
+    #' Desired prediction range associated with the regional descriptor.
+    #' Read-only! Represents the interval used to define precision.
     desired_range = function(value) {
       if (missing(value)) {
         private$.desired_range
