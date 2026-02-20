@@ -10,7 +10,11 @@ RegDesc = R6::R6Class("RegDesc",
     #' @param desired_range (NULL | `numeric(2)`) \cr
     #' The desired predicted outcome. If NULL (default), the current predicted value of `predictor` for `x_interest` is used as desired prediction.
     #' Alternatively, a vector with two numeric values that specify an outcome interval. This outcome interval needs to include the predicted value of `x_interest`.
-    initialize = function(box, predictor, x_interest, desired_range, fixed_features = NULL,
+    initialize = function(box,
+                          predictor,
+                          x_interest,
+                          desired_range,
+                          fixed_features = NULL,
       desired_class = NULL, method = NULL) {
       # input checks
       assert_class(box, "ParamSet")
@@ -77,6 +81,16 @@ RegDesc = R6::R6Class("RegDesc",
       print(results)
     },
 
+    #' Plot a surface over two features within the descriptor box.
+    #'
+    #' Creates a 2D surface plot for the selected features, restricted to the
+    #' regional descriptor and using the stored predictor.
+    #'
+    #' @param feature_names (`character(2)`) Names of the two features to plot.
+    #' Must be contained in `names(private$.box$params)`.
+    #' @param grid_size (`integer(1)`) Grid resolution for the surface (default 250).
+    #' @param surface (`character(1)`) Which surface to plot: `"prediction"` or `"range"`.
+    #' @return A `ggplot2` object.
     plot_surface = function(feature_names, grid_size = 250L, surface = "prediction") {
       assert_names(surface, subset.of = c("prediction", "range"))
       assert_names(feature_names, subset.of = names(private$.box$params))
@@ -86,11 +100,27 @@ RegDesc = R6::R6Class("RegDesc",
       make_surface_plot(box = private$.box, param_set = private$param_set, grid_size = grid_size, predictor = private$predictor,
         x_interest = private$.x_interest, feature_names = feature_names, surface = surface, desired_range = private$.desired_range)
     },
+
+    #' Evaluate the descriptor by sampling
+    #'
+    #' Estimates coverage and precision by drawing `n_samples` points (via
+    #' `evaluate_box()`) and checking whether predictions fall within `desired_range`.
+    #'
+    #' @param n_samples (`integer(1)`) Number of samples used for evaluation (default 100).
+    #' @return A named numeric vector with evaluation metrics (as returned by `evaluate_box()`).
     evaluate = function(n_samples = 100) {
       evaluate_box(box = private$.box, x_interest = private$.x_interest,
         predictor = private$predictor, n_samples = n_samples,
         desired_range = private$.desired_range)
     },
+
+    #' Evaluate the descriptor on the training data.
+    #'
+    #' Computes coverage as the fraction of training points inside the box, and
+    #' precision as the fraction of in-box points whose predictions fall within
+    #' `desired_range`.
+    #'
+    #' @return A named numeric vector with `precision` and `coverage`.
     evaluate_train = function() {
       evaldt = rbind(private$.x_interest, private$predictor$data$X)
       inbox = identify_in_box(private$.box, evaldt)
