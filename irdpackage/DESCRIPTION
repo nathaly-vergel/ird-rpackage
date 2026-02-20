@@ -12,19 +12,21 @@ Description: IRDs are hyperboxes that describe how an observation's feature valu
 URL: https://github.com/dandls/irgn/
 BugReports: https://github.com/dandls/irgn/issues
 Depends: 
-	R (>= 3.1.0)
+    R (>= 3.1.0)
 Imports:
-	checkmate,
-	paradox,
-	parallel,
-	iml, 
-	data.table
+    checkmate,
+    paradox,
+    parallel,
+    iml,
+    data.table,
+    R6,
+    anchors,
+    keras,
+    tensorflow
 Suggests: 
     knitr,
     rmarkdown,
     MASS,
-    tensorflow,
-    keras,
     StatMatch,
     testthat (>= 3.0.0)
 License: LGPL-3
