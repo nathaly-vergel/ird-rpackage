@@ -182,6 +182,9 @@ RegDescMethod = R6::R6Class("RegDescMethod",
           stop("`$history` is read only", call. = FALSE)
         }
       },
+      #' @field calls_fhat (`integer(1)`)
+      #'  Number of model prediction calls performed during the search procedure.
+      #'  Read-only.
       calls_fhat = function(value) {
         if (missing(value)) {
           private$.calls_fhat
