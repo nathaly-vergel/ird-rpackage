@@ -63,13 +63,13 @@ evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, st
     dt = SamplerUnif$new(box)$sample(n = n_samples)$data
     dt = box$trafo(dt, predictor = predictor)
   } else if (strategy == "extremes") {
-    low = private$box$lower
+    low = box$lower
     low = low[!is.na(low)]
-    up = private$box$upper
+    up = box$upper
     up = up[!is.na(up)]
     val = data.frame(rbind(low, up))
     vall = as.list(val)
-    lev = private$box$levels
+    lev = box$levels
     lev[sapply(lev, is.null)] <- NULL
     l = c(lev, vall)
     dt = data.table(expand.grid(l))
