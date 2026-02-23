@@ -2,9 +2,7 @@
 % Please edit documentation in R/helpers.R
 \name{transform_for_explanation}
 \alias{transform_for_explanation}
-\title{version 1 = MAIRE paper (0.33 vs. 0.66 = one vs. all)
-version 2 = my extended version (dummy encoded features)
-version 3 = my MAIRE version (dummy encoded features and [0, 1] for numerical ones) --> hybrid of version 1 and version 2}
+\title{Transform data for explanation}
 \usage{
 transform_for_explanation(
   data,
@@ -14,8 +12,23 @@ transform_for_explanation(
   frac = 1e-04
 )
 }
-\description{
-version 1 = MAIRE paper (0.33 vs. 0.66 = one vs. all)
-version 2 = my extended version (dummy encoded features)
-version 3 = my MAIRE version (dummy encoded features and [0, 1] for numerical ones) --> hybrid of version 1 and version 2
+\arguments{
+\item{data}{A data.frame with the background data.}
+
+\item{predictor}{A predictor object containing feature type information.}
+
+\item{x_interest}{A single-row data.frame representing the observation of interest.}
+
+\item{version}{Integer controlling the transformation strategy.}
+
+\item{frac}{Numeric value used when scaling numeric features.}
 }
+\value{
+A list with elements \code{expldata} and \code{explx_interest}.
+}
+\description{
+Internal preprocessing step used by IRD methods.
+Preprocesses the dataset and the observation of interest into a numeric
+representation suitable for IRD-based explanation methods.
+}
+\keyword{internal}

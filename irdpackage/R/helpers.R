@@ -190,9 +190,21 @@ predict_range = function(predictor, newdata, range) {
   return(as.numeric(prediction >= range[1] & prediction <= range[2]))
 }
 
-#' version 1 = MAIRE paper (0.33 vs. 0.66 = one vs. all)
-#' version 2 = my extended version (dummy encoded features)
-#' version 3 = my MAIRE version (dummy encoded features and [0, 1] for numerical ones) --> hybrid of version 1 and version 2
+#' Transform data for explanation
+#'
+#' Internal preprocessing step used by IRD methods.
+#' Preprocesses the dataset and the observation of interest into a numeric
+#' representation suitable for IRD-based explanation methods.
+#'
+#' @param data A data.frame with the background data.
+#' @param predictor A predictor object containing feature type information.
+#' @param x_interest A single-row data.frame representing the observation of interest.
+#' @param version Integer controlling the transformation strategy.
+#' @param frac Numeric value used when scaling numeric features.
+#'
+#' @return A list with elements \code{expldata} and \code{explx_interest}.
+#'
+#' @keywords internal
 transform_for_explanation = function(data, predictor, x_interest, version = 2, frac = 0.0001) {
   data = rbind(x_interest, data)
   expldata = data.table()
