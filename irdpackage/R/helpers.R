@@ -180,7 +180,7 @@ describe_box = function(box, digits = 2L) {
       paste0("{", results$levels, "}") # CASE 3: values
     )
   )
-  return(results[, .(id, range)])
+  return(results[, c("id", "range")], with = FALSE)
 }
 
 
@@ -258,6 +258,7 @@ transform_for_explanation = function(data, predictor, x_interest, version = 2, f
 }
 
 get_max_box = function (x_interest, fixed_features, predictor, param_set, desired_range, resolution = 500L) {
+  pred = dist = NULL  # added to silence NOTE from data.table NSE in R CMD check
   # <FIXME:> is 500L a good default??
   luval = lapply(predictor$data$feature.names, function(i_name) {
     val_name = x_interest[[i_name]]
