@@ -1,10 +1,11 @@
-tf = tf$compat$v1
+# tf = tf$compat$v1
 # tf$enable_eager_execution()
 
 #' Maire
 #'
 #' @export
-Maire = R6::R6Class("Maire", inherit = RegDescMethod,
+Maire = R6::R6Class("Maire",
+  inherit = RegDescMethod,
   public = list(
     #' @param predictor (`iml::Predictor`) \cr
     #' The object (created with `iml::Predictor$new()`) holding the machine
@@ -72,10 +73,14 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
       private$convergence = convergence
       private$strategy = strategy
       private$num_sampled_points = num_sampled_points
-      private$lambda_val_1 = tf$cast(tf$constant(lambda_val_1), dtype = "float64")
-      private$lambda_val = tf$cast(tf$constant(lambda_val),  dtype = "float64")
-      private$threshold = threshold
-      private$threshold_tensor = tf$cast(tf$constant(private$threshold), "float64")
+      # private$lambda_val_1 = tf$cast(tf$constant(lambda_val_1), dtype = "float64")
+      private$lambda_val_1 <- as.numeric(lambda_val_1)
+      # private$lambda_val = tf$cast(tf$constant(lambda_val),  dtype = "float64")
+      private$lambda_val   <- as.numeric(lambda_val)
+      # private$threshold = threshold
+      private$threshold    <- as.numeric(threshold)
+      # private$threshold_tensor = tf$cast(tf$constant(private$threshold), "float64")
+      private$threshold_tensor <- NULL  # should be built in fit_explanation()
       private$c1 = c1
       private$c2 = c2
       private$c3 = c3
@@ -123,22 +128,33 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
     u_vec_values = NULL,
     ana = NULL,
     max_cov_above_prec_threshold = NULL,
+    lambda_val_1_tensor = NULL,
+    lambda_val_tensor = NULL,
+
+    get_tf = function() {
+      tf <- tensorflow::tf$compat$v1
+      # TF1-style graph mode, not eager!
+      if (isTRUE(tf$executing_eagerly())) tf$compat$v1$disable_eager_execution()
+      tf
+    },
 
     run = function(){
+
+      tf <- private$get_tf()
 
       frac = 0.01
       f_value_explain_point = 1
 
       if (is.null(private$obsdata)) {
         private$obsdata = sampling(predictor = private$predictor, x_interest = private$x_interest,
-          fixed_features = private$fixed_features, desired_range = private$desired_range,
-          param_set = private$param_set,num_sampled_points = private$num_sampled_points,
-          strategy = private$strategy)
+                                   fixed_features = private$fixed_features, desired_range = private$desired_range,
+                                   param_set = private$param_set,num_sampled_points = private$num_sampled_points,
+                                   strategy = private$strategy)
       }
 
       private$.calls_fhat = private$.calls_fhat + nrow(private$obsdata)
       private$f_values_obsdata = data.table(predict_range(private$predictor,
-        private$obsdata, range = private$desired_range))
+                                                          private$obsdata, range = private$desired_range))
 
       if (private$strategy == "traindata") {
         private$num_sampled_points = nrow(private$obsdata)
@@ -147,7 +163,7 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
       # create transformed training dataset
       # factor variables numeric according to class
       expldata = transform_for_explanation(data = private$obsdata,
-        predictor = private$predictor, x_interest = private$x_interest, version = 3, frac = frac)
+                                           predictor = private$predictor, x_interest = private$x_interest, version = 3, frac = frac)
       private$expldata = expldata$expldata
       private$explain_point = expldata$explx_interest
       private$categorylist = attr(expldata, "categorylist")
@@ -156,8 +172,14 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
       private$dimension = ncol(private$expldata)
 
       # ## get lower and upper values of feature of explain_point (e.g., for explain_point[0] = 0.363 it will be l_vec[0] = 0.353 and u_vec[0] = 0.373 --> we start very small!
-      private$l_vec = tf$Variable(as.matrix(private$explain_point) - rep(1, private$dimension) * 0.01, "float64")
-      private$u_vec = tf$Variable(as.matrix(private$explain_point) + rep(1, private$dimension) * 0.01)
+      private$l_vec <- tf$Variable(
+        as.matrix(private$explain_point) - rep(1, private$dimension) * 0.01,
+        "float64"
+      )
+      private$u_vec <- tf$Variable(
+        as.matrix(private$explain_point) + rep(1, private$dimension) * 0.01,
+        "float64"
+      )
       ## if l_vec and u_vec are not between 0 and 1, clip them between 0 and 1
       private$clip_l = private$l_vec$assign(tf$clip_by_value(private$l_vec, 0.0, 1.0))
       private$clip_u = private$u_vec$assign(tf$clip_by_value(private$u_vec, 0.0, 1.0))
@@ -188,8 +210,8 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
           u_val = (min(private$u_vec_values[[fnam]], (1.0 - frac) + 0.001) - frac) / (1.0 - 2 * frac) * (max(fcol) - min(fcol)) + min(fcol)
           assert_true(l_val <= u_val)
           if (is.character(all.equal((max(private$explain_point[[fnam]], frac - 0.001) - frac) /
-              (1.0 - 2 * frac) * (max(fcol) - min(fcol)) + min(fcol),
-            private$x_interest[[fnam]]))) { stop("Retransformation of box boundaries did not work properly.")}
+                                     (1.0 - 2 * frac) * (max(fcol) - min(fcol)) + min(fcol),
+                                     private$x_interest[[fnam]]))) { stop("Retransformation of box boundaries did not work properly.")}
           if (is.integer(fcol)) {
             l_val = ceiling(l_val)
             u_val = floor(u_val)
@@ -203,10 +225,10 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
             } else {
               explnames = names(private$l_vec_values)
               colnams = explnames[grepl(explnames, pattern = paste0(fnam, "_"))]
-             oneinc = sapply(colnams, FUN = function(nam) {
-               private$l_vec_values[[nam]] < 0.66 &
-                 0.66 < private$u_vec_values[[nam]]
-               }, simplify = TRUE)
+              oneinc = sapply(colnams, FUN = function(nam) {
+                private$l_vec_values[[nam]] < 0.66 &
+                  0.66 < private$u_vec_values[[nam]]
+              }, simplify = TRUE)
               val = sub(paste0(fnam, "_"), replacement = "", x = colnams[oneinc])
             }
           } else {
@@ -226,21 +248,27 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
       #   } ), MARGIN = 2L, all)
     },
     fit_explanation = function(num_of_iterations) {
+      tf <- private$get_tf()
+
+      # Create constant tensors
+      private$lambda_val_1_tensor <- tf$constant(private$lambda_val_1, dtype = "float64")
+      private$lambda_val_tensor   <- tf$constant(private$lambda_val,   dtype = "float64")
+      private$threshold_tensor    <- tf$constant(private$threshold,    dtype = "float64")
 
       num_sampled_points_updated = as.integer(private$num_sampled_points) + 1L
       ### Construct Graph
       sampled_points_placeholder = tf$placeholder(dtype = "float64",
-        shape = list(num_sampled_points_updated,
-          private$dimension))
+                                                  shape = list(num_sampled_points_updated,
+                                                               private$dimension))
       ## b) placeholder for predicted values of sampled points
       sampled_points_f_values_placeholder = tf$placeholder(dtype = "float64",
-        shape = list(num_sampled_points_updated, 1L))
+                                                           shape = list(num_sampled_points_updated, 1L))
       # ## init loss, coverage and precision with placeholders
       private$loss_tensor = private$loss(sampled_points_placeholder,
-        sampled_points_f_values_placeholder)
+                                         sampled_points_f_values_placeholder)
       private$cov_tensor = private$cov(sampled_points_placeholder)
       private$prec_tensor = private$prec(sampled_points_placeholder,
-        sampled_points_f_values_placeholder)
+                                         sampled_points_f_values_placeholder)
       ## init gradients
       gradients = tf$gradients(private$loss_tensor, list(private$l_vec, private$u_vec))
       ## use ADAM as optimizer
@@ -277,7 +305,7 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
 
       max_cov_above_prec_threshold = 0.0
       history = data.table(iteration=numeric(), loss = numeric(), cov = numeric(),
-        prec = numeric(), analytic_cov = numeric(), analytic_prec = numeric())
+                           prec = numeric(), analytic_cov = numeric(), analytic_prec = numeric())
       featnams = names(private$expldata)
       best_coverage = 0
       counter = iteration = 1L
@@ -294,20 +322,20 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
         ## get approx values of coverage and precision + loss value
         # loss_value, cov_value, prec_value, _ =
         values = session$run(list(private$loss_tensor,
-          private$cov_tensor,
-          private$prec_tensor,
-          private$train_one_iteration),
-          feed_dict = dict(sampled_points_placeholder = as.matrix(sampled_points),
-            sampled_points_f_values_placeholder = as.matrix(f_values_sampled_points)))
+                                  private$cov_tensor,
+                                  private$prec_tensor,
+                                  private$train_one_iteration),
+                             feed_dict = dict(sampled_points_placeholder = as.matrix(sampled_points),
+                                              sampled_points_f_values_placeholder = as.matrix(f_values_sampled_points)))
         loss_value = values[[1]]
         cov_value = values[[2]]
         prec_value = values[[3]]
         session$run(list(private$clip_l, private$clip_u))
         ## get true values for coverage and precision
         analytic_values = session$run(list(private$analytic_cov,
-          private$analytic_prec),
-          feed_dict = dict(sampled_points_placeholder = as.matrix(sampled_points),
-            sampled_points_f_values_placeholder = as.matrix(f_values_sampled_points)))
+                                           private$analytic_prec),
+                                      feed_dict = dict(sampled_points_placeholder = as.matrix(sampled_points),
+                                                       sampled_points_f_values_placeholder = as.matrix(f_values_sampled_points)))
         analytic_cov_value = analytic_values[[1]]
         analytic_prec_value = analytic_values[[2]]
         ## update history list
@@ -317,11 +345,11 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
         names(upperdat) = paste0("u_", featnams)
         if (counter == 1) {
           history = rbind(history, list(counter, loss_value, cov_value, prec_value,
-            analytic_cov_value, analytic_prec_value))
+                                        analytic_cov_value, analytic_prec_value))
           history = cbind(history, lowerdat, upperdat)
         } else {
           history = rbind(history, c(list(counter, loss_value, cov_value, prec_value,
-            analytic_cov_value, analytic_prec_value), as.list(temp_l_vec_values), as.list(temp_u_vec_values)))
+                                          analytic_cov_value, analytic_prec_value), as.list(temp_l_vec_values), as.list(temp_u_vec_values)))
         }
 
         ## print iteration history
@@ -367,7 +395,7 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
 
       max_cov_above_prec_threshold = 0.0
       history = data.table(iteration=numeric(), loss = numeric(), cov = numeric(),
-        prec = numeric(), analytic_cov = numeric(), analytic_prec = numeric())
+                           prec = numeric(), analytic_cov = numeric(), analytic_prec = numeric())
 
       sampled_points = rbind(private$expldata, private$explain_point)
       f_values_sampled_points = rbind(private$f_values_obsdata, list(1L))
@@ -382,11 +410,11 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
         # f_values_sampled_points = tf$Variable(sampled_points_list[[2]])
         # eq. (4) in paper
         private$loss_tensor = private$loss(sampled_points,
-          f_values_sampled_points)
+                                           f_values_sampled_points)
         # approximated coverage and precision
         private$cov_tensor = private$cov(sampled_points)
         private$prec_tensor = private$prec(sampled_points,
-          f_values_sampled_points)
+                                           f_values_sampled_points)
         ## init gradients
         gradients = tf$gradients(private$loss_tensor, list(private$l_vec, private$u_vec))
         ## use ADAM as optimizer
@@ -436,10 +464,11 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
       private$.history = history
     },
 
-#    #' Internal loss function for the Maire optimizer.
-#    #' @param sampled_points (Tensor) \cr currently used dataset
-#    #' @param f_values_sampled_points (Tensor) \cr predicted labels of sampled points
+    #    #' Internal loss function for the Maire optimizer.
+    #    #' @param sampled_points (Tensor) \cr currently used dataset
+    #    #' @param f_values_sampled_points (Tensor) \cr predicted labels of sampled points
     loss = function(sampled_points, f_values_sampled_points) {
+      tf <- private$get_tf()
       # true precision
       analytic_prec = tf$reduce_sum(
         tf$cast(
@@ -463,12 +492,13 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
       lossf = -1.0 * private$cov(sampled_points) -
         1.0 * (1.0 - tf$cast(is.nan(analytic_prec), "float64")) *
         tf$multiply(
-          private$lambda_val_1 * (0.5 + tf$sign(- analytic_prec + private$threshold_tensor) * 0.5),
+          private$lambda_val_1_tensor * (0.5 + tf$sign(- analytic_prec + private$threshold_tensor) * 0.5),
           private$prec(sampled_points, f_values_sampled_points)
         ) + private$constraint_sum()
       return(lossf)
     },
     h = function(sampled_points) {
+      tf <- private$get_tf()
       return(private$A(
         tf$concat(list(private$G(
           sampled_points, private$l_vec),
@@ -476,6 +506,7 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
       )
     },
     cov = function(sampled_points) {
+      tf <- private$get_tf()
       return(tf$reduce_mean(private$h(sampled_points)))
     },
     prec = function(sampled_points, f_values_sampled_points) {
@@ -484,12 +515,13 @@ Maire = R6::R6Class("Maire", inherit = RegDescMethod,
       return(tf$reduce_mean(h_mul_values) / tf$reduce_mean(h_values))
     },
     constraint_sum = function() {
+      tf <- private$get_tf()
       tf_explain_point = tf$Variable(as.matrix(private$explain_point))
       return(tf$reduce_sum(
         tf$multiply(
-          private$lambda_val, tf$nn$relu(
+          private$lambda_val_tensor, tf$nn$relu(
             private$l_vec - tf_explain_point))) +
-          tf$reduce_sum(tf$multiply(private$lambda_val, tf$nn$relu(tf_explain_point - private$u_vec)))
+          tf$reduce_sum(tf$multiply(private$lambda_val_tensor, tf$nn$relu(tf_explain_point - private$u_vec)))
       )
     },
     step_function = function(input_var) {
