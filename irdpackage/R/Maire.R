@@ -205,7 +205,8 @@ Maire = R6::R6Class("Maire",
         fcol = private$obsdata[[fnam]]
         j = which(private$predictor$data$feature.names == fnam)
 
-        if (private$predictor$data$feature.types[fnam] == "numerical") {
+        is_num <- is.numeric(fcol) || is.integer(fcol)
+        if (is_num) {
           l_val = (max(private$l_vec_values[[fnam]], frac - 0.001) - frac) / (1.0 - 2 * frac) * (max(fcol) - min(fcol)) + min(fcol)
           u_val = (min(private$u_vec_values[[fnam]], (1.0 - frac) + 0.001) - frac) / (1.0 - 2 * frac) * (max(fcol) - min(fcol)) + min(fcol)
           assert_true(l_val <= u_val)
@@ -218,13 +219,21 @@ Maire = R6::R6Class("Maire",
           }
           current_box = update_box(current_box, j = j, lower = l_val, upper = u_val, complement = TRUE)
         } else {
+          #
           if (!is.ordered(fcol)) {
             if (length(unique(fcol)) == 2L) {
               id = which(c(0.33, 0.66) > private$l_vec_values[[fnam]] & c(0.33, 0.66) < private$u_vec_values[[fnam]])
               val = unique(levels(fcol)[id])
+
             } else {
               explnames = names(private$l_vec_values)
-              colnams = explnames[grepl(explnames, pattern = paste0(fnam, "_"))]
+              colnams = explnames[grepl(paste0("^", fnam, "_"), explnames)]
+              if (length(colnams) == 0L) {
+                stop(
+                  "MAIRE: expected one-hot columns for feature '", fnam,
+                  "' (prefix '", fnam, "_') but none found. Check transform_for_explanation()."
+                )
+              }
               oneinc = sapply(colnams, FUN = function(nam) {
                 private$l_vec_values[[nam]] < 0.66 &
                   0.66 < private$u_vec_values[[nam]]
