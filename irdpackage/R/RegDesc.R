@@ -1,7 +1,7 @@
 RegDesc = R6::R6Class("RegDesc",
   public = list(
     #' Creates a new Regional Descriptor (`RegDesc`) object.
-    #' This method should only be called by the `$find_box` methods of \link{RevPrim}.
+    #' This method should only be called by the `$find_box` methods of \link{Prim}.
     #' @param box (`ParamSet`)
     #' @param x_interest (`data.table(1)` | `data.frame(1)`) \cr
     #'   A single row with the observation of interest.

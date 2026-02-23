@@ -3,13 +3,13 @@
 \name{RegDesc}
 \alias{RegDesc}
 \title{Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of \link{RevPrim}.}
+This method should only be called by the `$find_box` methods of \link{Prim}.}
 \description{
 Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of \link{RevPrim}.
+This method should only be called by the `$find_box` methods of \link{Prim}.
 
 Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of \link{RevPrim}.
+This method should only be called by the `$find_box` methods of \link{Prim}.
 }
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
