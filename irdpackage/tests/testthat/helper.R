@@ -3,23 +3,31 @@ library("partykit")
 library("rpart")
 
 get_box_regr_mtcars = function() {
-  file_path = "test_files/boxmodel_regr_mtcars.RDS"
-  if (!file.exists(file_path)) {
-    if (!dir.exists("test_files")) {
-      dir.create("test_files")
-    }
+  dir = "test_files"
+  model_path = file.path(dir, "boxmodel_regr_mtcars.RDS")
+  box_path   = file.path(dir, "box_regr_mtcars.RDS")
+
+  if (!file.exists(model_path) || !file.exists(box_path)) {
+    if (!dir.exists(dir)) dir.create(dir, recursive = TRUE)
+
     tree = rpart::rpart(mpg ~ ., data = mtcars)
     mod = as.party(tree)
     x_interest = mtcars[1L,]
     attr(mod, "x_interest") = x_interest
+
     pred = Predictor$new(model = mod, data = mtcars, predict.function = function(model, newdata) {
       node_interest = predict(model, newdata = attr(model, "x_interest"), type = "node")
-      prediction = ifelse(predict(model, newdata = newdata, type = "node") == node_interest, 1, 0)
+      ifelse(predict(model, newdata = newdata, type = "node") == node_interest, 1, 0)
     })
-    saveRDS(pred, file = file_path)
-    saveRDS(get_box(pred), "test_files/box_regr_mtcars.RDS")
+
+    # Important: first build the box, then save -> if box fails, then no partial RDS for model
+    bx = get_box(pred)
+
+    saveRDS(pred, file = model_path)
+    saveRDS(bx,   file = box_path)
   }
-  list(model = readRDS(file_path), box = readRDS("test_files/box_regr_mtcars.RDS"))
+
+  list(model = readRDS(model_path), box = readRDS(box_path))
 }
 
 
