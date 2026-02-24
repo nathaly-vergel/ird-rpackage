@@ -47,24 +47,52 @@ make_param_set = function(dt, subset = NULL) {
   # -> better to make distinction explicit
   # DES: Re-aligns generated categorical columns with the original factor levels
   # of the predictor so that predict() works well
-  ps$trafo_predictor = function(x, predictor) {
-    if (is.null(predictor)) {
-      stop("trafo_predictor() needs a 'predictor' input")
-    }
-    factor_cols = names(which(sapply(predictor$data$X, is.factor)))
-    for (factor_col in factor_cols) {
-      fact_col_pred <- predictor$data$X[[factor_col]] # column type in predictor
-      value = factor(
-        x[[factor_col]],
-        levels  = levels(fact_col_pred),
-        ordered = is.ordered(fact_col_pred)
-      )
-      data.table::set(x, j = factor_col, value = value)
-    }
-    return(x)
-  }
+  # ps$trafo_predictor = function(x, predictor) {
+  #   if (is.null(predictor)) {
+  #     stop("trafo_predictor() needs a 'predictor' input")
+  #   }
+  #   factor_cols = names(which(sapply(predictor$data$X, is.factor)))
+  #   for (factor_col in factor_cols) {
+  #     fact_col_pred <- predictor$data$X[[factor_col]] # column type in predictor
+  #     value = factor(
+  #       x[[factor_col]],
+  #       levels  = levels(fact_col_pred),
+  #       ordered = is.ordered(fact_col_pred)
+  #     )
+  #     data.table::set(x, j = factor_col, value = value)
+  #   }
+  #   return(x)
+  # }
 
   return(ps)
+}
+
+# Align categorical columns in new data with the original factor
+# structure of the trained predictor to ensure predict() compatibility.
+#
+# @param x data.table/data.frame with newly generated feature values.
+# @param predictor Predictor object used to extract original factor levels.
+# @return Modified x with factors coerced to match training data.
+align_factors_with_predictor = function(x, predictor) {
+  if (is.null(predictor)) {
+    stop("align_factors_with_predictor() needs a 'predictor' input")
+  }
+
+  factor_cols = names(which(sapply(predictor$data$X, is.factor)))
+
+  for (factor_col in factor_cols) {
+    fact_col_pred <- predictor$data$X[[factor_col]]
+
+    value = factor(
+      x[[factor_col]],
+      levels  = levels(fact_col_pred),
+      ordered = is.ordered(fact_col_pred)
+    )
+
+    data.table::set(x, j = factor_col, value = value)
+  }
+
+  x
 }
 
 update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, complement = TRUE) {
@@ -92,7 +120,8 @@ evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, st
   ## generate new data
   if (strategy == "random") {
     dt = SamplerUnif$new(box)$sample(n = n_samples)$data
-    dt = box$trafo(dt, predictor = predictor)
+    # dt = box$trafo(dt, predictor = predictor)
+    dt = align_factors_with_predictor(dt, predictor = predictor)
   } else if (strategy == "extremes") {
     low = box$lower
     low = low[!is.na(low)]
@@ -196,7 +225,7 @@ make_ice_curve_area = function(predictor,
   x_interest_sub = x_interest[, !names(x_interest) %in% names(ps$class), with = FALSE]
   instance_dt = x_interest_sub[rep(1:nrow(x_interest_sub), nrow(exp_grid))]
   grid_dt = cbind(instance_dt, exp_grid)
-  grid_dt = ps$trafo_predictor(grid_dt, predictor = predictor)
+  grid_dt = align_factors_with_predictor(grid_dt, predictor)
   if (surface == "prediction") {
     pred = predictor$predict(grid_dt)[[1]]
   } else if (surface == "range") {
@@ -322,7 +351,8 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
     x_interest_sub = data.table::copy(x_interest)
     x_interest_sub[, (i_name):=NULL]
     dt = data.table::data.table(grid1d, x_interest_sub)
-    param_set$trafo(dt, predictor = predictor)
+    # param_set$trafo(dt, predictor = predictor)  # NOTE: Bug -> no reassigning
+    dt = align_factors_with_predictor(dt, predictor)
     dt[, "pred"] = predictor$predict(dt)
     # select closest grid points to x_interest$i_name with a prediction outside desired range
     # If all grid point lower value of x_interest have a prediction within desired range --> lower = NA

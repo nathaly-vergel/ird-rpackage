@@ -75,7 +75,8 @@ test_that("own dataset and largest local box could be used", {
   data = as.data.table(iris)[, -5]
   box_largest = get_max_box(x_interest = data[1,], predictor = pred_classif, param_set = make_param_set(data), desired_range = c(0.5, 1), fixed_features = NULL)
   sampled = SamplerUnif$new(box_largest)$sample(n = 10)$data
-  sampled = box_largest$trafo(sampled, predictor = pred_classif)
+  #sampled = box_largest$trafo(sampled, predictor = pred_classif)
+  sampled = align_factors_with_predictor(sampled, pred_classif)
   expect_true(all(identify_in_box(box = box_largest, data = sampled)))
   cr = RegDescMethod$new(predictor = pred_classif, quiet = TRUE)
   expect_error(cr$find_box(x_interest, desired_range = c(0.5, 1), obsdata = sampled, box_largest = box_largest), "Abstract base class")
