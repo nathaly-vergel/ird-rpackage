@@ -1,38 +1,69 @@
 make_param_set = function(dt, subset = NULL) {
-  param_list = lapply(names(dt), function(col_name){
+  param_list = lapply(names(dt), function(col_name) {
     column = dt[[col_name]]
+
     if (is.numeric(column)) {
-      lb = if (col_name %in% names(subset) && !is.na(subset[[col_name]][1])) subset[[col_name]][1] else min(column)
-      ub = if (col_name %in% names(subset) && !is.na(subset[[col_name]][2])) subset[[col_name]][2] else max(column)
-      if (is.double(column)){
-        param = ParamDbl$new(col_name, lower = lb, upper = ub)
-      } else if (is.integer(column)) {
-        param = ParamInt$new(col_name, lower = lb, upper = ub)
+      lb = if (!is.null(subset) && col_name %in% names(subset) && !is.na(subset[[col_name]][1])) {
+        subset[[col_name]][1]
+      } else {
+        min(column, na.rm = TRUE)
       }
+
+      ub = if (!is.null(subset) && col_name %in% names(subset) && !is.na(subset[[col_name]][2])) {
+        subset[[col_name]][2]
+      } else {
+        max(column, na.rm = TRUE)
+      }
+
+      if (is.integer(column)) {
+        paradox::p_int(lower = lb, upper = ub, id = col_name)
+      } else if (is.double(column)) {
+        paradox::p_dbl(lower = lb, upper = ub, id = col_name)
+      }
+
     } else {
       if (is.character(column)) {
-        lev = if (col_name %in% names(subset)) subset[[col_name]] else unique(column)
+        lev = if (!is.null(subset) && col_name %in% names(subset)) subset[[col_name]] else unique(column)
       } else {
-        lev = if (col_name %in% names(subset)) as.character(subset[[col_name]]) else levels(column)[unique(column[!is.na(column)])]
+        # factor / ordered factor
+        lev = if (!is.null(subset) && col_name %in% names(subset)) {
+          as.character(subset[[col_name]])
+        } else {
+          levels(column)[unique(column[!is.na(column)])]
+        }
       }
-      param = ParamFct$new(col_name, levels = lev)
+
+      lev = unique(as.character(lev))
+      lev = lev[!is.na(lev)]
+      paradox::p_fct(levels = lev, id = col_name)
     }
-    param
   })
 
-  ps = ParamSet$new(param_list)
-  ps$trafo = function(x, param_set, predictor) {
+  names(param_list) = names(dt)
+
+  ps = paradox::ParamSet$new(param_list)
+
+  # EXTENSION: trafo is a "reserved" word in paradox (Domain$trafo)
+  # -> better to make distinction explicit
+  # DES: Re-aligns generated categorical columns with the original factor levels
+  # of the predictor so that predict() works well
+  ps$trafo_predictor = function(x, predictor) {
     if (is.null(predictor)) {
-      stop("trafo() of parameter set needs a 'predictor' input")
+      stop("trafo_predictor() needs a 'predictor' input")
     }
     factor_cols = names(which(sapply(predictor$data$X, is.factor)))
     for (factor_col in factor_cols) {
-      fact_col_pred = predictor$data$X[[factor_col]]
-      value =  factor(x[[factor_col]], levels = levels(fact_col_pred), ordered = is.ordered(fact_col_pred))
-      set(x, j = factor_col, value = value)
+      fact_col_pred <- predictor$data$X[[factor_col]] # column type in predictor
+      value = factor(
+        x[[factor_col]],
+        levels  = levels(fact_col_pred),
+        ordered = is.ordered(fact_col_pred)
+      )
+      data.table::set(x, j = factor_col, value = value)
     }
     return(x)
   }
+
   return(ps)
 }
 
@@ -155,12 +186,17 @@ make_surface_plot = function(box, param_set, grid_size, predictor, x_interest, f
 }
 
 
-make_ice_curve_area = function(predictor, x_interest, grid_size, ps, surface, desired_range) {
+make_ice_curve_area = function(predictor,
+                               x_interest,
+                               grid_size,
+                               ps,
+                               surface,
+                               desired_range) {
   exp_grid = generate_design_grid(ps, grid_size)$data
   x_interest_sub = x_interest[, !names(x_interest) %in% names(ps$class), with = FALSE]
   instance_dt = x_interest_sub[rep(1:nrow(x_interest_sub), nrow(exp_grid))]
   grid_dt = cbind(instance_dt, exp_grid)
-  grid_dt = ps$trafo(grid_dt, predictor = predictor)
+  grid_dt = ps$trafo_predictor(grid_dt, predictor = predictor)
   if (surface == "prediction") {
     pred = predictor$predict(grid_dt)[[1]]
   } else if (surface == "range") {
