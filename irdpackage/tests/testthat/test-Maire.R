@@ -15,7 +15,7 @@ test_that("Regression and mixed features + fixed_features", {
   mairep = Maire$new(pred, num_of_iterations = 10L, quiet = TRUE)
   mair = mairep$find_box(x_interest = x_interest, desired_range = desired_range, fixed_features = c("carb"))
   expect_data_table(mairep$history, nrows = 10L)
-  expect_true(all.equal(mair$box$params$carb$lower, mair$box$params$carb$upper, x_interest$carb))
+  expect_true(all.equal(mair$box$lower[["carb"]], mair$box$upper[["carb"]], x_interest$carb))
 })
 
 
