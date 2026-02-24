@@ -117,6 +117,28 @@ test_box1_overlap_box2 = function(box1, box2) {
   }, box1$params, box2$params))
 }
 
+test_box1_overlap_box2 = function(box1, box2) {
+  ids = box1$ids()
+  stopifnot(setequal(ids, box2$ids()))
+
+  all(vapply(ids, function(id) {
+    d1 = box1$get_domain(id)
+
+    if (inherits(d1, "DomainDiscrete")) {
+      l1 = box1$levels[[id]]
+      l2 = box2$levels[[id]]
+      all(l2 %in% l1)
+    } else {
+      a1 = box1$lower[[id]]
+      b1 = box1$upper[[id]]
+      a2 = box2$lower[[id]]
+      b2 = box2$upper[[id]]
+
+      (a1 <= a2) & (b1 >= b2)
+    }
+  }, logical(1)))
+}
+
 get_box_classif_iris = function() {
   set.seed(1234L)
   file_path = "test_files/box_classif_iris.RDS"
