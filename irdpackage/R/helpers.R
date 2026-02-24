@@ -16,9 +16,9 @@ make_param_set = function(dt, subset = NULL) {
       }
 
       if (is.integer(column)) {
-        paradox::p_int(lower = lb, upper = ub, id = col_name)
+        paradox::p_int(lower = lb, upper = ub)
       } else if (is.double(column)) {
-        paradox::p_dbl(lower = lb, upper = ub, id = col_name)
+        paradox::p_dbl(lower = lb, upper = ub)
       }
 
     } else {
@@ -35,12 +35,12 @@ make_param_set = function(dt, subset = NULL) {
 
       lev = unique(as.character(lev))
       lev = lev[!is.na(lev)]
-      paradox::p_fct(levels = lev, id = col_name)
+      paradox::p_fct(levels = lev)
     }
   })
 
+  # names(param_list) replaces id = colname
   names(param_list) = names(dt)
-
   ps = paradox::ParamSet$new(param_list)
 
   # EXTENSION: trafo is a "reserved" word in paradox (Domain$trafo)
