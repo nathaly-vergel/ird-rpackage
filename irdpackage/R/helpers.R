@@ -95,24 +95,97 @@ align_factors_with_predictor = function(x, predictor) {
   x
 }
 
-update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, complement = TRUE) {
+#' Update a single parameter of a ParamSet representing a box
+#'
+#' @description
+#' Returns a modified copy of a `paradox::ParamSet` by updating one
+#' parameter (dimension) of the box. The original object is not modified.
+#'
+#' @param current_box A `paradox::ParamSet` representing the current box.
+#' @param j Either a character (parameter id) or a numeric index indicating
+#'   which parameter to update.
+#' @param lower Numeric. Optional new lower bound (numeric parameters only).
+#' @param upper Numeric. Optional new upper bound (numeric parameters only).
+#' @param val Character vector. Optional new levels (categorical parameters only).
+#' @param complement Logical. If TRUE and `val` is provided, the supplied
+#'   levels are added to the existing ones. If FALSE, the existing levels
+#'   are replaced.
+#'
+#' @details
+#' For numeric parameters (`p_int`, `p_dbl`), the function rebuilds the
+#' domain with updated bounds. For categorical parameters (`p_fct`), it
+#' rebuilds the domain with updated levels.
+#'
+#' Because bounds and levels should not be modified in place in
+#' paradox >= 1.0.0, a new `ParamSet` is constructed and returned.
+#'
+#' @return A new `paradox::ParamSet` with the updated parameter.
+update_box = function(current_box,
+                      j,
+                      lower = NULL,
+                      upper = NULL,
+                      val = NULL,
+                      complement = TRUE) {
 
-  new_box = current_box$clone(deep = TRUE)
-  if (!is.null(lower) && !is.na(lower)) {
-    new_box$params[[j]]$lower = lower
-  }
+  stopifnot(inherits(current_box, "ParamSet"))
 
-  if (!is.null(upper) && !is.na(upper)) {
-    new_box$params[[j]]$upper = upper
-  }
+  ids = current_box$ids()
 
-  if (all(!is.null(val)) && all(!is.na(val))) {
-    if (complement) {
-      val = unique(c(new_box$params[[j]]$levels, val))
+  # for j, allow numeric index or character id
+  if (is.numeric(j)) {
+    j = as.integer(j)
+    if (length(j) != 1L || is.na(j) || j < 1L || j > length(ids)) {
+      stop("`j` numeric index out of bounds for current_box.")
     }
-    new_box$params[[j]]$levels = val
+    j_id = ids[[j]]
+  } else {
+    if (!is.character(j) || length(j) != 1L || !(j %in% ids)) {
+      stop("`j` must be a valid parameter id (character) or a valid index (numeric).")
+    }
+    j_id = j
   }
-  return(new_box)
+
+  domains = setNames(vector("list", length(ids)), ids)
+
+  for (id in ids) {
+    d = current_box$get_domain(id)
+
+    # unchanged parameters: keep the original Domain object
+    if (!identical(id, j_id)) {
+      domains[[id]] = d
+      next
+    }
+
+    #
+    if (!is.null(current_box$levels[[id]])) {
+      lev = current_box$levels[[id]]
+
+      if (!is.null(val) && all(!is.na(val))) {
+        new_lev = unique(as.character(val))
+        new_lev = new_lev[!is.na(new_lev)]
+        lev = if (complement) unique(c(lev, new_lev)) else new_lev
+      }
+
+      domains[[id]] = paradox::p_fct(levels = lev)
+      next
+    }
+
+    # numeric: take current bounds and override if provided
+    lb = current_box$lower[[id]]
+    ub = current_box$upper[[id]]
+
+    if (!is.null(lower) && !is.na(lower)) lb = lower
+    if (!is.null(upper) && !is.na(upper)) ub = upper
+
+    # preserve int vs dbl based on original domain class
+    if (inherits(d, "ParamInt") || inherits(d, "DomainInteger")) {
+      domains[[id]] = paradox::p_int(lower = lb, upper = ub)
+    } else {
+      domains[[id]] = paradox::p_dbl(lower = lb, upper = ub)
+    }
+  }
+
+  paradox::ParamSet$new(domains)
 }
 
 evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, strategy = "random") {
@@ -345,8 +418,9 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
       if (type_name == "categorical") return(val_name) else c(val_name, val_name)
       return(c(val_name, val_name))
     }
-    ps_sub = param_set$clone(deep = TRUE)
-    ps_sub$subset(i_name)
+    #ps_sub = param_set$clone(deep = TRUE)
+    #ps_sub$subset(i_name)
+    ps_sub = paradox::ParamSet$new(setNames(list(param_set$get_domain(i_name)), i_name))
     grid1d = paradox::generate_design_grid(ps_sub, resolution = resolution)$data
     x_interest_sub = data.table::copy(x_interest)
     x_interest_sub[, (i_name):=NULL]
@@ -375,18 +449,28 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
   return(param_set_update)
 }
 
+# what observations from data fall within this box?
 identify_in_box = function(box, data) {
-  data = data.table::setDT(data)
-  data = data[, names(box$params), with = FALSE]
-  check_inbox = function(col, paramval) {
-    if (class(paramval)[1] %in% c("ParamInt", "ParamDbl")) {
-      col >= paramval$lower & col <= paramval$upper
+  data = data.table::as.data.table(data)
+  ids = box$ids()
+
+  data = data[, ids, with = FALSE] # guarantees order
+
+  ok_per_col = lapply(ids, function(id) {
+    cls = box$class[[id]]
+
+    if (cls %in% c("ParamInt", "ParamDbl")) {
+      lb = box$lower[[id]]
+      ub = box$upper[[id]]
+      data[[id]] >= lb & data[[id]] <= ub
     } else {
-      col %in% paramval$levels
+      lev = box$levels[[id]]
+      data[[id]] %in% lev
     }
-  }
-  datainbox = data[, Map(check_inbox, .SD, box$params), .SDcols = names(data)]
-  apply(datainbox, 1, all)
+  })
+
+  ok = do.call(cbind, ok_per_col)
+  apply(ok, 1, all)
 }
 
 # surpress messages
