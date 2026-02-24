@@ -34,7 +34,7 @@ RegDesc = R6::R6Class("RegDesc",
         assert_names(fixed_features, subset.of = predictor$data$features.names)
       }
       assert_character(method)
-      assert_names(names(box$params), permutation.of = predictor$data$feature.names)
+      assert_names(box$ids(), permutation.of = predictor$data$feature.names)
 
       # assign
       private$.box = box

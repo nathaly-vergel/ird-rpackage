@@ -179,17 +179,40 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       return(box_new)
     },
     create_subbox = function(current_box, j, lower = NULL, upper = NULL, val = NULL) {
-      new_box = update_box(current_box = current_box, j = j, lower = lower, upper = upper, val = val, complement = TRUE)
 
+      new_box = update_box(
+        current_box = current_box,
+        j = j,
+        lower = lower,
+        upper = upper,
+        val = val,
+        complement = TRUE
+      )
+
+      # Normalize j to an id so we can index box$lower/upper/levels safely
+      ids = current_box$ids()
+      if (is.numeric(j)) {
+        j = ids[[as.integer(j)]]
+      }
+
+      # Complement for numeric bounds:
+      # - if you set a new lower, the complementary box ends at the old lower
+      # - if you set a new upper, the complementary box starts at the old upper
       if (!is.null(lower) && !is.na(lower)) {
-        new_box$params[[j]]$upper = current_box$params[[j]]$lower
+        old_lb = current_box$lower[[j]]
+        new_box = update_box(new_box, j = j, upper = old_lb, complement = FALSE)
       }
       if (!is.null(upper) && !is.na(upper)) {
-        new_box$params[[j]]$lower = current_box$params[[j]]$upper
+        old_ub = current_box$upper[[j]]
+        new_box = update_box(new_box, j = j, lower = old_ub, complement = FALSE)
       }
 
-      if (!is.null(val) && !is.na(val)) {
-        new_box$params[[j]]$levels = setdiff(val, current_box$params[[j]]$levels)
+      # Complement for categorical levels:
+      if (!is.null(val) && all(!is.na(val))) {
+        old_levels = current_box$levels[[j]]
+        # keep levels that are NOT in the original box
+        comp_levels = setdiff(as.character(val), as.character(old_levels))
+        new_box = update_box(new_box, j = j, val = comp_levels, complement = FALSE)
       }
 
       return(new_box)

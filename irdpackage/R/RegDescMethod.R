@@ -133,13 +133,13 @@ RegDescMethod = R6::R6Class("RegDescMethod",
       # Check box_init
       assert_class(box_init, "ParamSet", null.ok = TRUE)
       if (!is.null(box_init)) {
-        assert_set_equal(names(box_init$params), private$predictor$data$feature.names)
+        assert_set_equal(box_init$ids(), private$predictor$data$feature.names)
         # <FIXME:> Take update fixed_features into account!
       }
 
       assert_class(box_largest, "ParamSet", null.ok = TRUE)
        if (!is.null(box_largest)) {
-        assert_set_equal(names(box_largest$params), private$predictor$data$feature.names)
+        assert_set_equal(box_largest$ids(), private$predictor$data$feature.names)
       }
 
       # Update private$param_set
@@ -209,11 +209,21 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     .history = NULL,
     .calls_fhat = NULL,
     sanitize_box = function(box) {
-      for (j in names(box$params)) {
-        if (class(box$params[[j]])[1] == "ParamInt") {
-          b = box$params[[j]]
-          box$params[[j]]$lower = ceiling(b$lower)
-          box$params[[j]]$upper = floor(b$upper)
+      stopifnot(inherits(box, "ParamSet"))
+
+      for (id in box$ids()) {
+        d = box$get_domain(id)
+
+        # only integer parameters
+        if (inherits(d, "ParamInt") || inherits(d, "DomainInteger")) {
+          lb = box$lower[[id]]
+          ub = box$upper[[id]]
+
+          # guard against NA
+          if (!is.null(lb) && !is.na(lb)) lb = ceiling(lb)
+          if (!is.null(ub) && !is.na(ub)) ub = floor(ub)
+
+          box = update_box(box, j = id, lower = lb, upper = ub, complement = FALSE)
         }
       }
       return(box)
