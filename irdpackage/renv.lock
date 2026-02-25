@@ -280,6 +280,7 @@
       "Description": "This package provides an interface to the java-based implementation of the anchors explanation algorithm for machine learning models. It enables High-Precision Model-Agnostic Explanations in your favourite statistical computing language.",
       "License": "BSD_3_clause + file LICENSE",
       "Encoding": "UTF-8",
+      "LazyData": "true",
       "Imports": [
         "checkmate",
         "jsonlite",
@@ -304,17 +305,13 @@
         "rmarkdown"
       ],
       "RoxygenNote": "6.1.1",
+      "Author": "Thorben Hellweg [aut, cre], Tobias Goerke [ctb], Magdalena Lang [ctb]",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
       "RemoteRepo": "anchorsOnR",
       "RemoteUsername": "viadee",
       "RemoteRef": "HEAD",
-      "RemoteSha": "617e9d253cbe09f6f18e7545d62c01ab1e3ddb78",
-      "NeedsCompilation": "no",
-      "Author": "Thorben Hellweg [aut, cre], Tobias Goerke [ctb], Magdalena Lang [ctb]",
-      "Depends": [
-        "R (>= 3.5.0)"
-      ]
+      "RemoteSha": "617e9d253cbe09f6f18e7545d62c01ab1e3ddb78"
     },
     "backports": {
       "Package": "backports",
