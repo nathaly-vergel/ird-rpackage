@@ -1,2 +1,2 @@
-#' @importFrom stats dist model.matrix var
+#' @importFrom stats dist model.matrix var setNames
 NULL
