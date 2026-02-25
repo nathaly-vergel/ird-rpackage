@@ -181,7 +181,7 @@ describe_box = function(box, digits = 2L) {
       paste0("{", results$levels, "}") # CASE 3: values
     )
   )
-  return(results[, c("id", "range")], with = FALSE)
+  return(results[, c("id", "range"), with = FALSE])
 }
 
 
