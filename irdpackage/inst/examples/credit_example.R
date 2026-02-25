@@ -55,6 +55,7 @@ pred$predict(x_interest)
 set.seed(12005L)
 prim = Prim$new(predictor = pred)
 system.time({primb = prim$find_box(x_interest, desired_range = c(0.3, 0.6))})
+primb
 primb$evaluate()
 primb$plot_surface(feature_names = c("duration", "credit.amount"), surface = "range")
 #pp = PostProcessing$new(predictor = pred)
