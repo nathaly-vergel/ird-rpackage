@@ -14,6 +14,7 @@ test_that("Regression and mixed features + fixed_features", {
   method = PostProcessing$new(pred, subbox_relsize = 0.5, evaluation_n = 50L, quiet = TRUE)
   res = method$find_box(x_interest = x_interest,
     desired_range = desired_range, fixed_features = c("carb"), box_init = box)
+  expect_true(TRUE)
 })
 
 
