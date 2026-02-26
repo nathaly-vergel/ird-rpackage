@@ -16,7 +16,7 @@ Depends:
 Imports:
     checkmate,
     paradox,
-    parallel,
+    parallel (>= 1.0.1),
     iml,
     data.table,
     R6,
