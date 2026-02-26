@@ -85,72 +85,139 @@ evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, st
   return(c(impurity = impurity, dist = dist))
 }
 
-
-make_surface_plot = function(box, param_set, grid_size, predictor, x_interest, feature_names, surface = "prediction", desired_range = NULL) {
+make_surface_plot = function(box,
+                             param_set,
+                             grid_size,
+                             predictor,
+                             x_interest,
+                             feature_names,
+                             surface = "prediction",
+                             desired_range = NULL) {
 
   param_set_sub = param_set$clone()$subset(feature_names)
-  dt_grid = make_ice_curve_area(predictor, x_interest, grid_size, param_set_sub, surface = surface, desired_range = desired_range)
+  dt_grid = make_ice_curve_area(predictor,
+                                x_interest,
+                                grid_size,
+                                param_set_sub,
+                                surface = surface,
+                                desired_range = desired_range)
+
   x_feat_name = feature_names[1L]
   y_feat_name = feature_names[2L]
 
   if (param_set_sub$all_numeric) {
-    p = ggplot2::ggplot(data = dt_grid, ggplot2::aes_string(x = x_feat_name, y = y_feat_name)) +
-      ggplot2::geom_tile(ggplot2::aes_string(fill = "pred")) +
-      ggplot2::geom_rug(ggplot2::aes_string(x = x_feat_name, y = y_feat_name), predictor$data$X, alpha = 0.2,
-        position = ggplot2::position_jitter(), sides = "bl") +
+
+    p = ggplot2::ggplot(
+      data = dt_grid,
+      ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]])
+    ) +
+      ggplot2::geom_tile(ggplot2::aes(fill = .data[["pred"]])) +
+      ggplot2::geom_rug(
+        data = predictor$data$X,
+        ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]]),
+        alpha = 0.2,
+        position = ggplot2::position_jitter(),
+        sides = "bl"
+      ) +
       ggplot2::guides(z = ggplot2::guide_legend(title = "pred")) +
       ggplot2::theme_bw() +
-      ggplot2::theme(legend.position = "right")
-    p = p + ggplot2::geom_rect(xmin=box$lower[[x_feat_name]],
-      xmax=box$upper[[x_feat_name]],
-      ymin=box$lower[[y_feat_name]],
-      ymax=box$upper[[y_feat_name]], color="yellow", fill = NA, alpha = .3)
-    p = p + ggplot2::geom_point(data = x_interest, ggplot2::aes_string(x = x_feat_name, y = y_feat_name),colour = "white")
+      ggplot2::theme(legend.position = "right") +
+      ggplot2::geom_rect(
+        xmin = box$lower[[x_feat_name]],
+        xmax = box$upper[[x_feat_name]],
+        ymin = box$lower[[y_feat_name]],
+        ymax = box$upper[[y_feat_name]],
+        color = "yellow", fill = NA, alpha = .3
+      ) +
+      ggplot2::geom_point(
+        data = x_interest,
+        ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]]),
+        colour = "white"
+      )
 
   } else if (param_set_sub$all_categorical) {
-    p = ggplot2::ggplot(dt_grid, ggplot2::aes_string(x_feat_name, y_feat_name)) +
-      ggplot2::geom_tile(ggplot2::aes_string(fill = "pred")) +
-      ggplot2::geom_point(ggplot2::aes_string(x_feat_name, y_feat_name), x_interest, color = "white") +
+
+    p = ggplot2::ggplot(
+      dt_grid,
+      ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]])
+    ) +
+      ggplot2::geom_tile(ggplot2::aes(fill = .data[["pred"]])) +
+      ggplot2::geom_point(
+        data = x_interest,
+        ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]]),
+        color = "white"
+      ) +
       ggplot2::guides(fill = ggplot2::guide_legend(title = "pred")) +
       ggplot2::theme_bw()
-    ### get value combinations in box
+
+    # value combinations inside the box
     frames = expand.grid(box$levels[[x_feat_name]], box$levels[[y_feat_name]])
     names(frames) = c(x_feat_name, y_feat_name)
     frames[[x_feat_name]] = as.integer(factor(frames[[x_feat_name]], levels = levels(dt_grid[[x_feat_name]])))
     frames[[y_feat_name]] = as.integer(factor(frames[[y_feat_name]], levels = levels(dt_grid[[y_feat_name]])))
 
     for (r in seq_len(nrow(frames))) {
-      p = p + ggplot2::geom_rect(xmin=frames[r, x_feat_name] - 0.4,
-        xmax=frames[r, x_feat_name] + 0.4,
-        ymin=frames[r, y_feat_name] - 0.4,
-        ymax=frames[r, y_feat_name] + 0.4, color="yellow", fill = NA, alpha = .3)
+      p = p + ggplot2::geom_rect(
+        xmin = frames[r, x_feat_name] - 0.4,
+        xmax = frames[r, x_feat_name] + 0.4,
+        ymin = frames[r, y_feat_name] - 0.4,
+        ymax = frames[r, y_feat_name] + 0.4,
+        color = "yellow", fill = NA, alpha = .3
+      )
     }
 
   } else {
+
     cat_feature = feature_names[param_set_sub$is_categ]
     num_feature = setdiff(feature_names[1:2], cat_feature)
+
     dt_grid$pred = predictor$predict(dt_grid)[[1]]
     y_hat_interest = predictor$predict(x_interest)
     x_interest_with_pred = cbind(x_interest, pred = y_hat_interest[[1]])
 
-    #### get obs in box
-    col_num = dt_grid[[(num_feature)]]
-    id = which(dt_grid[[(cat_feature)]] == box$params[[cat_feature]]$levels &
-        col_num >= box$lower[[num_feature]] & col_num <= box$upper[[num_feature]])
-    dt_sub = dt_grid[id,]
-    ####
+    # obs in box
+    col_num = dt_grid[[num_feature]]
+    id = which(
+      dt_grid[[cat_feature]] == box$params[[cat_feature]]$levels &
+        col_num >= box$lower[[num_feature]] &
+        col_num <= box$upper[[num_feature]]
+    )
+    dt_sub = dt_grid[id, ]
 
-    p = ggplot2::ggplot(data = dt_grid, ggplot2::aes_string(x = num_feature, y = "pred", group = cat_feature, color = cat_feature)) +
-      ggplot2::geom_line(inherit.aes = FALSE, data = dt_sub, ggplot2::aes_string(x = num_feature, y = "pred", group = cat_feature),
-        color = "yellow", lwd = 3) +
+    p = ggplot2::ggplot(
+      data = dt_grid,
+      ggplot2::aes(
+        x = .data[[num_feature]],
+        y = .data[["pred"]],
+        group = .data[[cat_feature]],
+        color = .data[[cat_feature]]
+      )
+    ) +
+      ggplot2::geom_line(
+        inherit.aes = FALSE,
+        data = dt_sub,
+        ggplot2::aes(
+          x = .data[[num_feature]],
+          y = .data[["pred"]],
+          group = .data[[cat_feature]]
+        ),
+        color = "yellow", lwd = 3
+      ) +
       ggplot2::geom_line() +
-      ggplot2::geom_rug(data = predictor$data$X, inherit.aes = FALSE, ggplot2::aes_string(x = num_feature), sides = "b") +
-      ggplot2::theme_bw()
-
-    p = p +
-      ggplot2::geom_point(ggplot2::aes_string(x = num_feature, y = "pred"), x_interest_with_pred, colour = "black")
-
+      ggplot2::geom_rug(
+        data = predictor$data$X,
+        inherit.aes = FALSE,
+        ggplot2::aes(x = .data[[num_feature]]),
+        sides = "b"
+      ) +
+      ggplot2::theme_bw() +
+      ggplot2::geom_point(
+        data = x_interest_with_pred,
+        ggplot2::aes(x = .data[[num_feature]], y = .data[["pred"]]),
+        colour = "black"
+      )
   }
+
   p
 }
 

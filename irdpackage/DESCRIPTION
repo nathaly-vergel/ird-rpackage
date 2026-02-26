@@ -23,7 +23,8 @@ Imports:
     anchors,
     keras,
     tensorflow,
-    ggplot2
+    ggplot2, 
+    rlang
 Suggests: 
     knitr,
     rmarkdown,
