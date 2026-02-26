@@ -189,30 +189,42 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         complement = TRUE
       )
 
-      # Normalize j to an id so we can index box$lower/upper/levels safely
       ids = current_box$ids()
       if (is.numeric(j)) {
         j = ids[[as.integer(j)]]
       }
 
-      # Complement for numeric bounds:
-      # - if you set a new lower, the complementary box ends at the old lower
-      # - if you set a new upper, the complementary box starts at the old upper
-      if (!is.null(lower) && !is.na(lower)) {
+      # Numerical
+      if (!is.null(lower) && length(lower) > 0L && any(!is.na(lower))) {
         old_lb = current_box$lower[[j]]
-        new_box = update_box(new_box, j = j, upper = old_lb, complement = FALSE)
-      }
-      if (!is.null(upper) && !is.na(upper)) {
-        old_ub = current_box$upper[[j]]
-        new_box = update_box(new_box, j = j, lower = old_ub, complement = FALSE)
+        new_box = update_box(
+          new_box,
+          j = j,
+          upper = old_lb,
+          complement = FALSE
+        )
       }
 
-      # Complement for categorical levels:
-      if (!is.null(val) && all(!is.na(val))) {
+      if (!is.null(upper) && length(upper) > 0L && any(!is.na(upper))) {
+        old_ub = current_box$upper[[j]]
+        new_box = update_box(
+          new_box,
+          j = j,
+          lower = old_ub,
+          complement = FALSE
+        )
+      }
+
+      # Categorical
+      if (!is.null(val) && length(val) > 0L && any(!is.na(val))) {
         old_levels = current_box$levels[[j]]
-        # keep levels that are NOT in the original box
         comp_levels = setdiff(as.character(val), as.character(old_levels))
-        new_box = update_box(new_box, j = j, val = comp_levels, complement = FALSE)
+        new_box = update_box(
+          new_box,
+          j = j,
+          val = comp_levels,
+          complement = FALSE
+        )
       }
 
       return(new_box)
@@ -310,16 +322,51 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
           }
         } else {
           for (l in names(private$searchspace[[j]])) {
-            bound = private$alpha*(private$searchspace[[j]][[l]][1])+(1-private$alpha)*box_new$params[[j]][[l]]
+
+            target = private$searchspace[[j]][[l]][1]
+
+            current = if (l == "lower") {
+              box_new$lower[[j]]
+            } else {
+              box_new$upper[[j]]
+            }
+
+            bound = private$alpha * target + (1 - private$alpha) * current
+
+            # si bound es invalido, no evaluar ese candidato
+            if (length(bound) == 0L || is.na(bound)) next
+
+            # si el parametro es int, proyecta a entero
+            is_int = identical(box_new$class[[j]], "ParamInt")
+            if (is_int) {
+              if (l == "lower") {
+                bound = as.integer(ceiling(bound))
+              } else { # upper
+                bound = as.integer(floor(bound))
+              }
+            }
+
             if (l == "lower") {
               subbox = private$create_subbox(current_box = box_new, j = j, lower = bound)
             } else {
               subbox = private$create_subbox(current_box = box_new, j = j, upper = bound)
             }
-            size =  (subbox$upper[[j]]- subbox$lower[[j]])/private$lookup_sizes[[j]]
+
+            if (is.null(subbox)) next
+
+            if (is_int) {
+              lo = subbox$lower[[j]]
+              up = subbox$upper[[j]]
+              if (is.na(lo) || is.na(up) || up < lo) next
+            }
+
+            size = (subbox$upper[[j]] - subbox$lower[[j]]) / private$lookup_sizes[[j]]
             eval = private$evaluate_box(subbox, desired_range = private$desired_range,
-              x_interest = private$x_interest)
-            resrow = data.table(var = j, lower = NA, upper = NA, val = NA, impurity = eval[1], dist = eval[2], size = size)
+                                        x_interest = private$x_interest)
+
+            resrow = data.table(var = j, lower = NA, upper = NA, val = NA,
+                                impurity = eval[1], dist = eval[2], size = size)
+
             resrow[, (l) := bound]
             res = rbind(res, resrow)
           }
@@ -377,6 +424,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       s = private$searchspace[[var]]
       private$searchspace[[var]] = s[lapply(s, length) > 0]
       private$searchspace = private$searchspace[lapply(private$searchspace, length) > 0]
+      return(private$searchspace)
     },
     print_parameters = function() {
       cat(" - subbox_relsize: ", private$subbox_relsize, "\n")

@@ -95,31 +95,6 @@ align_factors_with_predictor = function(x, predictor) {
   x
 }
 
-#' Update a single parameter of a ParamSet representing a box
-#'
-#' @description
-#' Returns a modified copy of a `paradox::ParamSet` by updating one
-#' parameter (dimension) of the box. The original object is not modified.
-#'
-#' @param current_box A `paradox::ParamSet` representing the current box.
-#' @param j Either a character (parameter id) or a numeric index indicating
-#'   which parameter to update.
-#' @param lower Numeric. Optional new lower bound (numeric parameters only).
-#' @param upper Numeric. Optional new upper bound (numeric parameters only).
-#' @param val Character vector. Optional new levels (categorical parameters only).
-#' @param complement Logical. If TRUE and `val` is provided, the supplied
-#'   levels are added to the existing ones. If FALSE, the existing levels
-#'   are replaced.
-#'
-#' @details
-#' For numeric parameters (`p_int`, `p_dbl`), the function rebuilds the
-#' domain with updated bounds. For categorical parameters (`p_fct`), it
-#' rebuilds the domain with updated levels.
-#'
-#' Because bounds and levels should not be modified in place in
-#' paradox >= 1.0.0, a new `ParamSet` is constructed and returned.
-#'
-#' @return A new `paradox::ParamSet` with the updated parameter.
 update_box = function(current_box,
                       j,
                       lower = NULL,
@@ -145,6 +120,23 @@ update_box = function(current_box,
     j_id = j
   }
 
+  coerce_int_bound = function(x, what, id) {
+    if (is.null(x) || length(x) == 0L || is.na(x)) return(NA_integer_)
+    if (!is.numeric(x) || length(x) != 1L) {
+      stop("Invalid ", what, " bound for integer parameter '", id, "'.", call. = FALSE)
+    }
+    # accept 6.0 but reject 6.2
+    if (abs(x - round(x)) > 1e-12) {
+      stop("Non-integer ", what, " bound for integer parameter '", id, "': ", x, call. = FALSE)
+    }
+    as.integer(round(x))
+  }
+
+  coerce_dbl_bound = function(x) {
+    if (is.null(x) || length(x) == 0L || is.na(x)) return(NA_real_)
+    as.numeric(x)[1]
+  }
+
   domains = setNames(vector("list", length(ids)), ids)
 
   for (id in ids) {
@@ -156,7 +148,7 @@ update_box = function(current_box,
       next
     }
 
-    #
+    # categorical
     if (!is.null(current_box$levels[[id]])) {
       lev = current_box$levels[[id]]
 
@@ -170,18 +162,35 @@ update_box = function(current_box,
       next
     }
 
-    # numeric: take current bounds and override if provided
+    # numeric bounds from current_box
     lb = current_box$lower[[id]]
     ub = current_box$upper[[id]]
 
-    if (!is.null(lower) && !is.na(lower)) lb = lower
-    if (!is.null(upper) && !is.na(upper)) ub = upper
+    if (!is.null(lower) && any(!is.na(lower))) lb = lower[which(!is.na(lower))[1]]
+    if (!is.null(upper) && any(!is.na(upper))) ub = upper[which(!is.na(upper))[1]]
 
-    # preserve int vs dbl based on original domain class
-    if (inherits(d, "ParamInt") || inherits(d, "DomainInteger")) {
-      domains[[id]] = paradox::p_int(lower = lb, upper = ub)
+    # Decide int vs dbl using ParamSet$class (stable in paradox 1.0.x)
+    cls = current_box$class[[id]]
+    is_int = identical(cls, "ParamInt")
+
+    if (is_int) {
+      lb_i = coerce_int_bound(lb, "lower", id)
+      ub_i = coerce_int_bound(ub, "upper", id)
+
+      if (is.na(lb_i) || is.na(ub_i)) {
+        stop("Invalid NA bounds for integer parameter '", id, "'.", call. = FALSE)
+      }
+
+      domains[[id]] = paradox::p_int(lower = lb_i, upper = ub_i)
     } else {
-      domains[[id]] = paradox::p_dbl(lower = lb, upper = ub)
+      lb_d = coerce_dbl_bound(lb)
+      ub_d = coerce_dbl_bound(ub)
+
+      if (is.na(lb_d) || is.na(ub_d)) {
+        stop("Invalid NA bounds for numeric parameter '", id, "'.", call. = FALSE)
+      }
+
+      domains[[id]] = paradox::p_dbl(lower = lb_d, upper = ub_d)
     }
   }
 
@@ -218,7 +227,6 @@ evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, st
   return(c(impurity = impurity, dist = dist))
 }
 
-
 make_surface_plot = function(box, param_set, grid_size, predictor, x_interest, feature_names, surface = "prediction", desired_range = NULL) {
 
   param_set_sub = param_set$clone()$subset(feature_names)
@@ -227,23 +235,23 @@ make_surface_plot = function(box, param_set, grid_size, predictor, x_interest, f
   y_feat_name = feature_names[2L]
 
   if (param_set_sub$all_numeric) {
-    p = ggplot2::ggplot(data = dt_grid, ggplot2::aes_string(x = x_feat_name, y = y_feat_name)) +
-      ggplot2::geom_tile(ggplot2::aes_string(fill = "pred")) +
-      ggplot2::geom_rug(ggplot2::aes_string(x = x_feat_name, y = y_feat_name), predictor$data$X, alpha = 0.2,
-        position = ggplot2::position_jitter(), sides = "bl") +
+    p = ggplot2::ggplot(data = dt_grid, ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]])) +
+      ggplot2::geom_tile(ggplot2::aes(fill = .data[["pred"]])) +
+      ggplot2::geom_rug(data = predictor$data$X, ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]]), alpha = 0.2,
+                        position = ggplot2::position_jitter(), sides = "bl") +
       ggplot2::guides(z = ggplot2::guide_legend(title = "pred")) +
       ggplot2::theme_bw() +
       ggplot2::theme(legend.position = "right")
-    p = p + ggplot2::geom_rect(xmin=box$lower[[x_feat_name]],
-      xmax=box$upper[[x_feat_name]],
-      ymin=box$lower[[y_feat_name]],
-      ymax=box$upper[[y_feat_name]], color="yellow", fill = NA, alpha = .3)
-    p = p + ggplot2::geom_point(data = x_interest, ggplot2::aes_string(x = x_feat_name, y = y_feat_name),colour = "white")
+    p = p + ggplot2::geom_rect(xmin = box$lower[[x_feat_name]],
+                               xmax = box$upper[[x_feat_name]],
+                               ymin = box$lower[[y_feat_name]],
+                               ymax = box$upper[[y_feat_name]], color = "yellow", fill = NA, alpha = .3)
+    p = p + ggplot2::geom_point(data = x_interest, ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]]), colour = "white")
 
   } else if (param_set_sub$all_categorical) {
-    p = ggplot2::ggplot(dt_grid, ggplot2::aes_string(x_feat_name, y_feat_name)) +
-      ggplot2::geom_tile(ggplot2::aes_string(fill = "pred")) +
-      ggplot2::geom_point(ggplot2::aes_string(x_feat_name, y_feat_name), x_interest, color = "white") +
+    p = ggplot2::ggplot(dt_grid, ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]])) +
+      ggplot2::geom_tile(ggplot2::aes(fill = .data[["pred"]])) +
+      ggplot2::geom_point(data = x_interest, ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]]), color = "white") +
       ggplot2::guides(fill = ggplot2::guide_legend(title = "pred")) +
       ggplot2::theme_bw()
     ### get value combinations in box
@@ -253,10 +261,10 @@ make_surface_plot = function(box, param_set, grid_size, predictor, x_interest, f
     frames[[y_feat_name]] = as.integer(factor(frames[[y_feat_name]], levels = levels(dt_grid[[y_feat_name]])))
 
     for (r in seq_len(nrow(frames))) {
-      p = p + ggplot2::geom_rect(xmin=frames[r, x_feat_name] - 0.4,
-        xmax=frames[r, x_feat_name] + 0.4,
-        ymin=frames[r, y_feat_name] - 0.4,
-        ymax=frames[r, y_feat_name] + 0.4, color="yellow", fill = NA, alpha = .3)
+      p = p + ggplot2::geom_rect(xmin = frames[r, x_feat_name] - 0.4,
+                                 xmax = frames[r, x_feat_name] + 0.4,
+                                 ymin = frames[r, y_feat_name] - 0.4,
+                                 ymax = frames[r, y_feat_name] + 0.4, color = "yellow", fill = NA, alpha = .3)
     }
 
   } else {
@@ -268,25 +276,38 @@ make_surface_plot = function(box, param_set, grid_size, predictor, x_interest, f
 
     #### get obs in box
     col_num = dt_grid[[(num_feature)]]
-    id = which(dt_grid[[(cat_feature)]] == box$params[[cat_feature]]$levels &
-        col_num >= box$lower[[num_feature]] & col_num <= box$upper[[num_feature]])
-    dt_sub = dt_grid[id,]
+    allowed = box$levels[[cat_feature]]
+
+    if (is.null(allowed)) {
+      allowed = unique(dt_grid[[cat_feature]])
+    }
+    stopifnot(length(num_feature) == 1L, num_feature %in% names(box$lower))
+    lb = as.numeric(box$lower[[num_feature]])
+    ub = as.numeric(box$upper[[num_feature]])
+
+    id = which(
+      (dt_grid[[cat_feature]] %in% allowed) &
+        (col_num >= lb) &
+        (col_num <= ub)
+    )
+    dt_sub = dt_grid[id, ]
     ####
 
-    p = ggplot2::ggplot(data = dt_grid, ggplot2::aes_string(x = num_feature, y = "pred", group = cat_feature, color = cat_feature)) +
-      ggplot2::geom_line(inherit.aes = FALSE, data = dt_sub, ggplot2::aes_string(x = num_feature, y = "pred", group = cat_feature),
-        color = "yellow", lwd = 3) +
+    p = ggplot2::ggplot(data = dt_grid, ggplot2::aes(x = .data[[num_feature]], y = .data[["pred"]],
+                                                     group = .data[[cat_feature]], color = .data[[cat_feature]])) +
+      ggplot2::geom_line(inherit.aes = FALSE, data = dt_sub,
+                         ggplot2::aes(x = .data[[num_feature]], y = .data[["pred"]], group = .data[[cat_feature]]),
+                         color = "yellow", lwd = 3) +
       ggplot2::geom_line() +
-      ggplot2::geom_rug(data = predictor$data$X, inherit.aes = FALSE, ggplot2::aes_string(x = num_feature), sides = "b") +
+      ggplot2::geom_rug(data = predictor$data$X, inherit.aes = FALSE, ggplot2::aes(x = .data[[num_feature]]), sides = "b") +
       ggplot2::theme_bw()
 
     p = p +
-      ggplot2::geom_point(ggplot2::aes_string(x = num_feature, y = "pred"), x_interest_with_pred, colour = "black")
+      ggplot2::geom_point(ggplot2::aes(x = .data[[num_feature]], y = .data[["pred"]]), x_interest_with_pred, colour = "black")
 
   }
   p
 }
-
 
 make_ice_curve_area = function(predictor,
                                x_interest,
@@ -319,7 +340,7 @@ describe_box = function(box, digits = 2L) {
       paste0("{", results$levels, "}") # CASE 3: values
     )
   )
-  return(results[, c("id", "range")], with = FALSE)
+  return(results[, c("id", "range"), with = FALSE])
 }
 
 
