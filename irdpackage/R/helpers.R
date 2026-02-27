@@ -378,16 +378,18 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
 }
 
 identify_in_box = function(box, data) {
+  ids = box$ids()  # feature names
   data = data.table::setDT(data)
-  data = data[, box$ids(), with = FALSE]
-  check_inbox = function(col, paramval) {
-    if (class(paramval)[1] %in% c("ParamInt", "ParamDbl")) {
-      col >= paramval$lower & col <= paramval$upper
-    } else {
-      col %in% paramval$levels
+  data = data[, ids, with = FALSE]
+  check_inbox = function(col, param_id) {
+    dom = box$get_domain(param_id)  # domain used to identify data type
+    if (paradox::domain_is_number(dom)) {
+      col >= box$lower[[param_id]] & col <= box$upper[[param_id]]
+    } else if (paradox::domain_is_categ(dom)) {
+      col %in% box$levels[[param_id]]
     }
   }
-  datainbox = data[, Map(check_inbox, .SD, box$params), .SDcols = names(data)]
+  datainbox = data[, Map(check_inbox, .SD, names(.SD)), .SDcols = ids]
   apply(datainbox, 1, all)
 }
 
