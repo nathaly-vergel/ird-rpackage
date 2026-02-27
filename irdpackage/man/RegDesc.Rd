@@ -127,7 +127,7 @@ regional descriptor and using the stored predictor.}
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{feature_names}}{(`character(2)`) Names of the two features to plot.
-Must be contained in `names(private$.box$params)`.}
+Must be contained in `private$.box$ids()`.}
 
 \item{\code{grid_size}}{(`integer(1)`) Grid resolution for the surface (default 250).}
 

@@ -209,7 +209,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     .history = NULL,
     .calls_fhat = NULL,
     sanitize_box = function(box) {
-      for (j in names(box$params)) {
+      for (j in box$ids()) {
         if (class(box$params[[j]])[1] == "ParamInt") {
           b = box$params[[j]]
           box$params[[j]]$lower = ceiling(b$lower)

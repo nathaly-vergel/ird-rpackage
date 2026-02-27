@@ -379,7 +379,7 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
 
 identify_in_box = function(box, data) {
   data = data.table::setDT(data)
-  data = data[, names(box$params), with = FALSE]
+  data = data[, box$ids(), with = FALSE]
   check_inbox = function(col, paramval) {
     if (class(paramval)[1] %in% c("ParamInt", "ParamDbl")) {
       col >= paramval$lower & col <= paramval$upper
