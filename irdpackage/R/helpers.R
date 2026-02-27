@@ -38,22 +38,41 @@ make_param_set = function(dt, subset = NULL) {
 }
 
 update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, complement = TRUE) {
-
-  new_box = current_box$clone(deep = TRUE)
-  if (!is.null(lower) && !is.na(lower)) {
-    new_box$params[[j]]$lower = lower
+  # normalize j to an id -> now feature name (zB j = "age")
+  ids = current_box$ids()
+  if (is.numeric(j)) {
+    j = ids[[as.integer(j)]]
   }
 
-  if (!is.null(upper) && !is.na(upper)) {
-    new_box$params[[j]]$upper = upper
-  }
+  domains = current_box$domains
+  dom_old = domains[[j]]   # domain from feature to update
+  cls = current_box$class[[j]] # feature's type
 
-  if (all(!is.null(val)) && all(!is.na(val))) {
-    if (complement) {
-      val = unique(c(new_box$params[[j]]$levels, val))
+  if (cls %in% c("ParamInt", "ParamDbl")) {
+
+    lb = if (!is.null(lower) && !is.na(lower)) lower else dom_old$lower
+    ub = if (!is.null(upper) && !is.na(upper)) upper else dom_old$upper
+
+    if (cls == "ParamInt") {
+      domains[[j]] = paradox::p_int(lower = lb, upper = ub)
+    } else {
+      domains[[j]] = paradox::p_dbl(lower = lb, upper = ub)
     }
-    new_box$params[[j]]$levels = val
   }
+
+  if (cls %in% c("ParamFct", "ParamLgl")) {
+
+    if (all(!is.null(val)) && all(!is.na(val))) {
+      lev = val
+      if (complement) lev = unique(c(dom_old$levels, val))
+      domains[[j]] = paradox::p_fct(levels = lev)
+    }
+  }
+
+  # Rebuild a new ParamSet and add extra_trafo
+  new_box = paradox::ParamSet$new(params = domains)
+  new_box$extra_trafo = current_box$extra_trafo
+
   return(new_box)
 }
 
