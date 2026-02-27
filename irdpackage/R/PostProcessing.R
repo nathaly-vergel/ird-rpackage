@@ -72,7 +72,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       # vars_diff = private$predictor$data$features.names
 
       sampled = SamplerUnif$new(box_new)$sample(n = private$evaluation_n*5)$data
-      sampled = box_new$trafo(sampled, predictor = private$predictor)
+      sampled = box_new$extra_trafo(x = sampled, predictor = private$predictor)
 
       private$.calls_fhat = private$.calls_fhat + nrow(sampled)
       homogeneous = sum(predict_range(private$predictor, newdata = sampled,
