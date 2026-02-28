@@ -60,11 +60,11 @@ update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, co
     }
   }
 
-  if (cls %in% c("ParamFct", "ParamLgl")) {
+  if (cls == "ParamFct") {
 
     if (all(!is.null(val)) && all(!is.na(val))) {
       lev = val
-      if (complement) lev = unique(c(dom_old$levels, val))
+      if (complement) lev = unique(c(dom_old$levels[[1]], val))
       domains[[j]] = paradox::p_fct(levels = lev)
     }
   }
