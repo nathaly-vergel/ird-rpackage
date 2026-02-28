@@ -286,7 +286,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
           }
         } else {
           for (l in names(private$searchspace[[j]])) {
-            bound = private$alpha*(private$searchspace[[j]][[l]][1])+(1-private$alpha)*box_new$params[[j]][[l]]
+            bound = private$alpha*(private$searchspace[[j]][[l]][1])+(1-private$alpha)*box_new[[l]][[j]]
             if (l == "lower") {
               subbox = private$create_subbox(current_box = box_new, j = j, lower = bound)
             } else {
