@@ -178,17 +178,31 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       return(box_new)
     },
     create_subbox = function(current_box, j, lower = NULL, upper = NULL, val = NULL) {
+
+      # if j is numeric (index), map it to a feature name
+      ids = current_box$ids()
+      if (is.numeric(j)) {
+        j = ids[[as.integer(j)]]
+      }
+
       new_box = update_box(current_box = current_box, j = j, lower = lower, upper = upper, val = val, complement = TRUE)
 
       if (!is.null(lower) && !is.na(lower)) {
-        new_box$params[[j]]$upper = current_box$params[[j]]$lower
+        # complement ends at old lower
+        old_lower = current_box$lower[[j]]
+        new_box = update_box(current_box = new_box, j = j, upper = old_lower, complement = FALSE)
       }
       if (!is.null(upper) && !is.na(upper)) {
-        new_box$params[[j]]$lower = current_box$params[[j]]$upper
+        # complement starts at old upper
+        old_upper = current_box$upper[[j]]
+        new_box = update_box(current_box = new_box, j = j, lower = old_upper, complement = FALSE)
       }
 
       if (!is.null(val) && !is.na(val)) {
-        new_box$params[[j]]$levels = setdiff(val, current_box$params[[j]]$levels)
+        # complement excludes the chosen categories
+        old_levels = current_box$levels[[j]]
+        comp_levels = setdiff(old_levels, val)
+        new_box = update_box(current_box = new_box, j = j, val = comp_levels, complement = FALSE)
       }
 
       return(new_box)
