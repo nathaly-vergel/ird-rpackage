@@ -133,7 +133,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
       # Check box_init
       assert_class(box_init, "ParamSet", null.ok = TRUE)
       if (!is.null(box_init)) {
-        assert_set_equal(names(box_init$params), private$predictor$data$feature.names)
+        assert_set_equal(box_init$ids(), private$predictor$data$feature.names)
         # <FIXME:> Take update fixed_features into account!
       }
 

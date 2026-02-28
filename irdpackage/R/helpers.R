@@ -198,7 +198,7 @@ make_surface_plot = function(box,
     # obs in box
     col_num = dt_grid[[num_feature]]
     id = which(
-      dt_grid[[cat_feature]] == box$params[[cat_feature]]$levels &
+      dt_grid[[cat_feature]] == box$levels[[cat_feature]] &
         col_num >= box$lower[[num_feature]] &
         col_num <= box$upper[[num_feature]]
     )
