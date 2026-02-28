@@ -96,7 +96,7 @@ Prim = R6::R6Class("Prim", inherit = RegDescMethod,
             val = character(), impurity = numeric(), coverage = numeric(), size = numeric())
           if (box_new$is_categ[[j]]) {
             res = data.table()
-            for (cat in setdiff(box_new$params[[j]]$levels, private$x_interest[[j]])) {
+            for (cat in setdiff(box_new$levels[[j]], private$x_interest[[j]])) {
               subbox = update_box(current_box = box_new, j = j, lower = NULL,
                 upper = NULL, val = setdiff(box_new$levels[[j]], cat),
                 complement = FALSE)
@@ -201,7 +201,7 @@ Prim = R6::R6Class("Prim", inherit = RegDescMethod,
             val = character(), impurity = numeric(), coverage = numeric(), size = numeric())
           if (box_new$is_categ[[j]]) {
             res = data.table()
-            for (cat in setdiff(private$box_largest$params[[j]]$levels, box_new$params[[j]]$levels)) {
+            for (cat in setdiff(private$box_largest$levels[[j]], box_new$levels[[j]])) {
               subbox = update_box(current_box = box_new, j = j, lower = NULL,
                 upper = NULL, val = c(box_new$levels[[j]], cat),
                 complement = FALSE)
