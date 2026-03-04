@@ -86,6 +86,16 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
           s_j = (ps$upper - ps$lower)/(1/private$subbox_relsize)
           if (ps$class[[j]] == "ParamInt") {
             s_j = round(s_j)
+
+            # if s_j < 0.5, round(s_j) = 0 -> seq() will error
+            if (s_j == 0) {
+              rng = ps$upper[[1]] - ps$lower[[1]]
+              warning(sprintf(
+                "subbox_relsize too small for integer feature '%s' (range = %s). Using step size 1 instead, equivalent to subbox_relsize = %g.",
+                j, rng, 1/rng
+              ), call. = FALSE)
+              s_j = 1 # sensitivity of integers
+            }
           }
           return(s_j)
         }
