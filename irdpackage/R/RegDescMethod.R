@@ -139,7 +139,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
 
       assert_class(box_largest, "ParamSet", null.ok = TRUE)
        if (!is.null(box_largest)) {
-        assert_set_equal(names(box_largest$params), private$predictor$data$feature.names)
+        assert_set_equal(box_largest$ids(), private$predictor$data$feature.names)
       }
 
       # Update private$param_set
@@ -209,14 +209,24 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     .history = NULL,
     .calls_fhat = NULL,
     sanitize_box = function(box) {
-      for (j in box$ids()) {
-        if (class(box$params[[j]])[1] == "ParamInt") {
-          b = box$params[[j]]
-          box$params[[j]]$lower = ceiling(b$lower)
-          box$params[[j]]$upper = floor(b$upper)
+
+      domains = box$domains
+      ids = box$ids()
+
+      for (j in ids) {
+        if (box$class[[j]] == "ParamInt") {
+          dom = domains[[j]]
+          domains[[j]] = paradox::p_int(
+            lower = ceiling(dom$lower),
+            upper = floor(dom$upper)
+          )
         }
       }
-      return(box)
+
+      new_box = paradox::ParamSet$new(params = domains)
+      new_box$extra_trafo = box$extra_trafo
+
+      return(new_box)
     },
      run = function() {
       stop("Abstract base class")
