@@ -201,7 +201,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       if (!is.null(val) && !is.na(val)) {
         # complement excludes the chosen categories
         old_levels = current_box$levels[[j]]
-        comp_levels = setdiff(old_levels, val)
+        comp_levels = setdiff(val, old_levels)
         new_box = update_box(current_box = new_box, j = j, val = comp_levels, complement = FALSE)
       }
 
