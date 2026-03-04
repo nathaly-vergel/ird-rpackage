@@ -83,7 +83,11 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       private$lookup_sizes = lapply(vars_diff, FUN = function(j) {
         ps = private$param_set$clone()$subset(j)
         if (ps$all_numeric) {
-          (ps$upper - ps$lower)/(1/private$subbox_relsize)
+          s_j = (ps$upper - ps$lower)/(1/private$subbox_relsize)
+          if (ps$class[[j]] == "ParamInt") {
+            s_j = round(s_j)
+          }
+          return(s_j)
         }
       })
       names(private$lookup_sizes) = vars_diff
@@ -101,19 +105,17 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
             if (box_new$upper[[j]] == box_new$lower[[j]]) return(NULL)
             if (ps$lower[[1]] < private$x_interest[[j]]) {
               xvecl = c(seq(ps$lower[[1]], private$x_interest[[j]], by = private$lookup_sizes[[j]][[1]])[-1], private$x_interest[[j]])
+              xvecl = unique(xvecl)
             } else {
               xvecl = numeric()
               box_new = update_box(box_new, j = j, lower = private$x_interest[[j]])
             }
             if (ps$upper > private$x_interest[[j]]) {
-              xvecu = c(seq(ps$upper, private$x_interest[[j]], by = -private$lookup_sizes[[j]])[-1], private$x_interest[[j]])
+              xvecu = c(seq(ps$upper[[1]], private$x_interest[[j]], by = -private$lookup_sizes[[j]])[-1], private$x_interest[[j]])
+              xvecu = unique(xvecu)
               } else {
               xvecu = numeric()
               box_new = update_box(box_new, j = j, upper = private$x_interest[[j]])
-            }
-            if (ps$storage_type[[1]] == "integer") {
-              xvecl = unique(round(xvecl))
-              xvecu = unique(round(xvecu))
             }
             return(list(lower = xvecl, upper = xvecu))
           } else if (ps$all_categorical) {
@@ -152,10 +154,6 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
           } else {
             xvecu = numeric()
             box_new = update_box(box_new, j = j, upper = ps$upper[[1]])
-          }
-          if (ps$storage_type[[1]] == "integer") {
-            xvecl = unique(round(xvecl))
-            xvecu = unique(round(xvecu))
           }
           private$searchspace = c(private$searchspace, list(list(lower = xvecl, upper = xvecu)))
         } else if (ps$all_categorical) {
