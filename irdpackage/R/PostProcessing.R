@@ -309,6 +309,23 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         } else {
           for (l in names(private$searchspace[[j]])) {
             bound = private$alpha*(private$searchspace[[j]][[l]][1])+(1-private$alpha)*box_new[[l]][[j]]
+
+            # Add modification for integers
+            if (box_new$class[[j]] == "ParamInt") {
+              if (l == "lower") {
+                bound = floor(bound)
+              } else {
+                bound = ceiling(bound)
+              }
+            }
+
+            # Skip this candidate bound if doesn't change the box
+            if ((l == "lower" && identical(bound, box_new$lower[[j]])) ||
+                (l == "upper" && identical(bound, box_new$upper[[j]]))) {
+              next
+            }
+
+            # Create candidate box
             if (l == "lower") {
               subbox = private$create_subbox(current_box = box_new, j = j, lower = bound)
             } else {
