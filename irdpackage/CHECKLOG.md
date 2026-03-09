@@ -19,3 +19,25 @@
 - `mlr3learners` = 0.6.0
 - `mlr3pipelines` = 0.5.1
 
+## [Unreleased]
+
+### 2026-03-09 — Migration to paradox 1.0.1
+
+#### CI / Checks
+
+- `devtools::check()` passes without errors under the current dependency stack (commit 69efec8)
+- The package was updated to work with recent versions of `paradox` and the `mlr3` ecosystem.
+- The example `credit_example.R` runs successfully with the current CRAN versions.
+
+To verify the new behaviour was consistent, results were compared against the previous implementation (using `paradox 0.11.0`). The main algorithms (PRIM, MaxBox, etc) produce the same results.
+
+One difference appears in the post-processing step for integer-valued features. The previous implementation evaluated many candidate bounds that differed only by very small numeric amounts but ultimately corresponded to the same integer bound after rounding. The updated implementation avoids evaluating such redundant candidates. As a result, the resulting post-processed boxes can differ slightly, but the search becomes more efficient and avoids spending time evaluating changes that have no real effect on the integer domain.
+
+This adjustment to the post-processing logic was reviewed and approved by Prof. Giuseppe.
+
+#### Dependencies (current CRAN versions)
+
+* `mlr3` = 1.5.0
+* `mlr3learners` = 0.14.0
+* `mlr3pipelines` = 0.11.0
+* `paradox` = 1.0.1
