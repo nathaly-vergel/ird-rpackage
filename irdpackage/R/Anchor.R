@@ -173,7 +173,7 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
           } else if (operator == "{") {
             val = gsub("(.+?\\{)(.+?)(\\}.*)", "\\2", expr)
             if (grepl(",", val)) val = eval(parse(text = paste0("c(", val, ")")))
-            if (private$param_set$params[[feat]]$is_number) {
+            if (private$param_set$is_number[[feat]]) {
               current_box = update_box(current_box = current_box,
                 j = feat, lower = min(val), upper = max(val), complement = FALSE)
             }
