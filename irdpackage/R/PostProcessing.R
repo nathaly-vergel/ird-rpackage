@@ -322,6 +322,10 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
             # Skip this candidate bound if doesn't change the box
             if ((l == "lower" && identical(bound, box_new$lower[[j]])) ||
                 (l == "upper" && identical(bound, box_new$upper[[j]]))) {
+              # if candidate bound = current bound, then with any alpha we will
+              # get the same candidate -> best to remove it
+              private$searchspace[[j]][[l]] = private$searchspace[[j]][[l]][-1]
+              private$searchspace = private$declutter_searchspace(j)
               next
             }
 
@@ -344,6 +348,11 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         return(res)
       })
       res_table = rbindlist(a)
+
+      if (nrow(res_table) == 0) {
+        return(box_new)
+      }
+
       # remove the categories with impurity > 0
       # <FIXME:> change this to allow for slight impurity
       remove = res_table[!is.na(val) & impurity > 0, ]
