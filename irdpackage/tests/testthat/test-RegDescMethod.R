@@ -50,7 +50,7 @@ test_that("$find_box returns meaningful error if x_interest has unexpected colum
 
   x_interest = iris[1L, ]
   x_interest$Sepal.Length = as.factor(x_interest$Sepal.Length)
-  expect_error(cr$find_box(x_interest, desired_class = "setosa"), "same types")
+  expect_error(cr$find_box(x_interest, desired_class = "setosa", desired_range = c(0.8, 1)), "same types")
 })
 
 test_that("$find_box throughs error if class not specified in predictor", {
