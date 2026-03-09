@@ -38,7 +38,7 @@ get_connected_samples = function(predictor, x_interest, desired_range, fixed_fea
   factor_cols = names(which(sapply(predictor$data$X, is.factor)))
   set.seed(seed)
   sampleddata = SamplerUnif$new(param_set)$sample(n = num_sampled_points)$data
-  sampleddata = param_set$trafo(sampleddata, predictor = predictor)
+  sampleddata = param_set$extra_trafo(x = sampleddata, predictor = predictor)
   inrange = predict_range(predictor, sampleddata, range = desired_range) == 1L
   sampleddata = sampleddata[(inrange),]
   sampleddata = unique(sampleddata)

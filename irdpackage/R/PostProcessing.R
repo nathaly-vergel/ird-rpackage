@@ -72,7 +72,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       # vars_diff = private$predictor$data$features.names
 
       sampled = SamplerUnif$new(box_new)$sample(n = private$evaluation_n*5)$data
-      sampled = box_new$trafo(sampled, predictor = private$predictor)
+      sampled = box_new$extra_trafo(x = sampled, predictor = private$predictor)
 
       private$.calls_fhat = private$.calls_fhat + nrow(sampled)
       homogeneous = sum(predict_range(private$predictor, newdata = sampled,
@@ -83,7 +83,21 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       private$lookup_sizes = lapply(vars_diff, FUN = function(j) {
         ps = private$param_set$clone()$subset(j)
         if (ps$all_numeric) {
-          (ps$upper - ps$lower)/(1/private$subbox_relsize)
+          s_j = (ps$upper - ps$lower)/(1/private$subbox_relsize)
+          if (ps$class[[j]] == "ParamInt") {
+            s_j = round(s_j)
+
+            # if s_j < 0.5, round(s_j) = 0 -> seq() will error
+            if (s_j == 0) {
+              rng = ps$upper[[1]] - ps$lower[[1]]
+              warning(sprintf(
+                "subbox_relsize too small for integer feature '%s' (range = %s). Using step size 1 instead, equivalent to subbox_relsize = %g.",
+                j, rng, 1/rng
+              ), call. = FALSE)
+              s_j = 1 # sensitivity of integers
+            }
+          }
+          return(s_j)
         }
       })
       names(private$lookup_sizes) = vars_diff
@@ -101,19 +115,17 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
             if (box_new$upper[[j]] == box_new$lower[[j]]) return(NULL)
             if (ps$lower[[1]] < private$x_interest[[j]]) {
               xvecl = c(seq(ps$lower[[1]], private$x_interest[[j]], by = private$lookup_sizes[[j]][[1]])[-1], private$x_interest[[j]])
+              xvecl = unique(xvecl)
             } else {
               xvecl = numeric()
               box_new = update_box(box_new, j = j, lower = private$x_interest[[j]])
             }
             if (ps$upper > private$x_interest[[j]]) {
-              xvecu = c(seq(ps$upper, private$x_interest[[j]], by = -private$lookup_sizes[[j]])[-1], private$x_interest[[j]])
+              xvecu = c(seq(ps$upper[[1]], private$x_interest[[j]], by = -private$lookup_sizes[[j]])[-1], private$x_interest[[j]])
+              xvecu = unique(xvecu)
               } else {
               xvecu = numeric()
               box_new = update_box(box_new, j = j, upper = private$x_interest[[j]])
-            }
-            if (ps$storage_type[[1]] == "integer") {
-              xvecl = unique(round(xvecl))
-              xvecu = unique(round(xvecu))
             }
             return(list(lower = xvecl, upper = xvecu))
           } else if (ps$all_categorical) {
@@ -153,10 +165,6 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
             xvecu = numeric()
             box_new = update_box(box_new, j = j, upper = ps$upper[[1]])
           }
-          if (ps$storage_type[[1]] == "integer") {
-            xvecl = unique(round(xvecl))
-            xvecu = unique(round(xvecu))
-          }
           private$searchspace = c(private$searchspace, list(list(lower = xvecl, upper = xvecu)))
         } else if (ps$all_categorical) {
           private$searchspace = c(private$searchspace, list(list(val = setdiff(ps$levels[[j]], box_new$levels[[j]]))))
@@ -178,17 +186,31 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       return(box_new)
     },
     create_subbox = function(current_box, j, lower = NULL, upper = NULL, val = NULL) {
+
+      # if j is numeric (index), map it to a feature name
+      ids = current_box$ids()
+      if (is.numeric(j)) {
+        j = ids[[as.integer(j)]]
+      }
+
       new_box = update_box(current_box = current_box, j = j, lower = lower, upper = upper, val = val, complement = TRUE)
 
       if (!is.null(lower) && !is.na(lower)) {
-        new_box$params[[j]]$upper = current_box$params[[j]]$lower
+        # complement ends at old lower
+        old_lower = current_box$lower[[j]]
+        new_box = update_box(current_box = new_box, j = j, upper = old_lower, complement = FALSE)
       }
       if (!is.null(upper) && !is.na(upper)) {
-        new_box$params[[j]]$lower = current_box$params[[j]]$upper
+        # complement starts at old upper
+        old_upper = current_box$upper[[j]]
+        new_box = update_box(current_box = new_box, j = j, lower = old_upper, complement = FALSE)
       }
 
       if (!is.null(val) && !is.na(val)) {
-        new_box$params[[j]]$levels = setdiff(val, current_box$params[[j]]$levels)
+        # complement excludes the chosen categories
+        old_levels = current_box$levels[[j]]
+        comp_levels = setdiff(val, old_levels)
+        new_box = update_box(current_box = new_box, j = j, val = comp_levels, complement = FALSE)
       }
 
       return(new_box)
@@ -286,7 +308,28 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
           }
         } else {
           for (l in names(private$searchspace[[j]])) {
-            bound = private$alpha*(private$searchspace[[j]][[l]][1])+(1-private$alpha)*box_new$params[[j]][[l]]
+            bound = private$alpha*(private$searchspace[[j]][[l]][1])+(1-private$alpha)*box_new[[l]][[j]]
+
+            # Add modification for integers
+            if (box_new$class[[j]] == "ParamInt") {
+              if (l == "lower") {
+                bound = floor(bound)
+              } else {
+                bound = ceiling(bound)
+              }
+            }
+
+            # Skip this candidate bound if doesn't change the box
+            if ((l == "lower" && identical(bound, box_new$lower[[j]])) ||
+                (l == "upper" && identical(bound, box_new$upper[[j]]))) {
+              # if candidate bound = current bound, then with any alpha we will
+              # get the same candidate -> best to remove it
+              private$searchspace[[j]][[l]] = private$searchspace[[j]][[l]][-1]
+              private$searchspace = private$declutter_searchspace(j)
+              next
+            }
+
+            # Create candidate box
             if (l == "lower") {
               subbox = private$create_subbox(current_box = box_new, j = j, lower = bound)
             } else {
@@ -305,6 +348,11 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         return(res)
       })
       res_table = rbindlist(a)
+
+      if (nrow(res_table) == 0) {
+        return(box_new)
+      }
+
       # remove the categories with impurity > 0
       # <FIXME:> change this to allow for slight impurity
       remove = res_table[!is.na(val) & impurity > 0, ]

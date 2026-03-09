@@ -1288,7 +1288,7 @@
     },
     "mlr3misc": {
       "Package": "mlr3misc",
-      "Version": "0.19.0",
+      "Version": "0.21.0",
       "Source": "Repository",
       "Title": "Helper Functions for 'mlr3'",
       "Authors@R": "c( person(\"Marc\", \"Becker\", , \"marcbecker@posteo.de\", role = c(\"cre\", \"aut\"), comment = c(ORCID = \"0000-0002-8115-0400\")), person(\"Michel\", \"Lang\", , \"michellang@gmail.com\", role = \"aut\", comment = c(ORCID = \"0000-0001-9754-0393\")), person(\"Patrick\", \"Schratz\", , \"patrick.schratz@gmail.com\", role = \"aut\", comment = c(ORCID = \"0000-0003-0748-6624\")) )",
@@ -1297,7 +1297,7 @@
       "URL": "https://mlr3misc.mlr-org.com, https://github.com/mlr-org/mlr3misc",
       "BugReports": "https://github.com/mlr-org/mlr3misc/issues",
       "Depends": [
-        "R (>= 3.3.0)"
+        "R (>= 3.4.0)"
       ],
       "Imports": [
         "backports (>= 0.1.5)",
@@ -1319,19 +1319,19 @@
       "Config/testthat/parallel": "true",
       "Encoding": "UTF-8",
       "NeedsCompilation": "yes",
-      "RoxygenNote": "7.3.2",
-      "Collate": "'Dictionary.R' 'named_list.R' 'Callback.R' 'Context.R' 'as_factor.R' 'as_short_string.R' 'assert_ro_binding.R' 'calculate_hash.R' 'capitalize.R' 'cat_cli.R' 'catn.R' 'check_operators.R' 'check_packages_installed.R' 'chunk.R' 'compose.R' 'compute_mode.R' 'conditions.R' 'count_missing.R' 'crate.R' 'cross_join.R' 'dictionary_sugar.R' 'did_you_mean.R' 'distinct_values.R' 'encapsulate.R' 'enframe.R' 'extract_vars.R' 'format_bib.R' 'formulate.R' 'get_private.R' 'get_seed.R' 'has_element.R' 'ids.R' 'insert_named.R' 'invoke.R' 'is_scalar_na.R' 'keep_in_bounds.R' 'leanify.R' 'load_dataset.R' 'map_values.R' 'modify.R' 'named_vector.R' 'names2.R' 'nin.R' 'open_help.R' 'printf.R' 'probe.R' 'purrr_map.R' 'rcbind.R' 'rd_info.R' 'recycle_vector.R' 'register_namespace_callback.R' 'remove_named.R' 'reorder_vector.R' 'require_namespaces.R' 'rowwise_table.R' 'seq.R' 'set_class.R' 'set_names.R' 'set_params.R' 'shuffle.R' 'str_collapse.R' 'str_indent.R' 'str_trunc.R' 'strip_srcrefs.R' 'to_decimal.R' 'topo_sort.R' 'transpose.R' 'unnest.R' 'which_max.R' 'with_package.R' 'zzz.R'",
+      "RoxygenNote": "7.3.3",
+      "Collate": "'Dictionary.R' 'named_list.R' 'Callback.R' 'Context.R' 'as_factor.R' 'as_short_string.R' 'assert_ro_binding.R' 'calculate_hash.R' 'capitalize.R' 'cat_cli.R' 'catn.R' 'check_operators.R' 'check_packages_installed.R' 'chunk.R' 'compose.R' 'compute_mode.R' 'conditions.R' 'count_missing.R' 'crate.R' 'cross_join.R' 'dictionary_sugar.R' 'did_you_mean.R' 'distinct_values.R' 'encapsulate.R' 'enframe.R' 'extract_vars.R' 'format_bib.R' 'formulate.R' 'get_private.R' 'get_seed.R' 'has_element.R' 'ids.R' 'insert_named.R' 'invoke.R' 'is_scalar_na.R' 'keep_in_bounds.R' 'leanify.R' 'load_dataset.R' 'map_values.R' 'modify.R' 'named_vector.R' 'names2.R' 'nin.R' 'open_help.R' 'printf.R' 'probe.R' 'purrr_map.R' 'rcbind.R' 'rd_info.R' 'recycle_vector.R' 'register_namespace_callback.R' 'remove_named.R' 'reorder_vector.R' 'require_namespaces.R' 'rowwise_table.R' 'seq.R' 'set_class.R' 'set_names.R' 'set_params.R' 'shuffle.R' 'str_collapse.R' 'str_indent.R' 'str_trunc.R' 'strip_srcrefs.R' 'to_decimal.R' 'topo_sort.R' 'transpose.R' 'unnest.R' 'warn_deprecated.R' 'which_max.R' 'with_package.R' 'zzz.R'",
       "Author": "Marc Becker [cre, aut] (ORCID: <https://orcid.org/0000-0002-8115-0400>), Michel Lang [aut] (ORCID: <https://orcid.org/0000-0001-9754-0393>), Patrick Schratz [aut] (ORCID: <https://orcid.org/0000-0003-0748-6624>)",
       "Maintainer": "Marc Becker <marcbecker@posteo.de>",
       "Repository": "CRAN"
     },
     "paradox": {
       "Package": "paradox",
-      "Version": "0.11.0",
+      "Version": "1.0.1",
       "Source": "Repository",
       "Type": "Package",
       "Title": "Define and Work with Parameter Spaces for Complex Algorithms",
-      "Authors@R": "c(person(given = \"Michel\", family = \"Lang\", role = c(\"cre\", \"aut\"), email = \"michellang@gmail.com\", comment = c(ORCID = \"0000-0001-9754-0393\")), person(given = \"Bernd\", family = \"Bischl\", role = \"aut\", email = \"bernd_bischl@gmx.net\", comment = c(ORCID = \"0000-0001-6002-6980\")), person(given = \"Jakob\", family = \"Richter\", role = \"aut\", email = \"jakob1richter@gmail.com\", comment = c(ORCID = \"0000-0003-4481-5554\")), person(given = \"Xudong\", family = \"Sun\", role = \"aut\", email = \"smilesun.east@gmail.com\", comment = c(ORCID = \"0000-0003-3269-2307\")), person(given = \"Martin\", family = \"Binder\", role = \"aut\", email = \"mlr.developer@mb706.com\"), person(given = \"Marc\", family = \"Becker\", role = \"ctb\", email = \"marcbecker@posteo.de\", comment = c(ORCID = \"0000-0002-8115-0400\")))",
+      "Authors@R": "c(person(given = \"Michel\", family = \"Lang\", role = \"aut\", email = \"michellang@gmail.com\", comment = c(ORCID = \"0000-0001-9754-0393\")), person(given = \"Bernd\", family = \"Bischl\", role = \"aut\", email = \"bernd_bischl@gmx.net\", comment = c(ORCID = \"0000-0001-6002-6980\")), person(given = \"Jakob\", family = \"Richter\", role = \"aut\", email = \"jakob1richter@gmail.com\", comment = c(ORCID = \"0000-0003-4481-5554\")), person(given = \"Xudong\", family = \"Sun\", role = \"aut\", email = \"smilesun.east@gmail.com\", comment = c(ORCID = \"0000-0003-3269-2307\")), person(given = \"Martin\", family = \"Binder\", role = c(\"aut\", \"cre\"),  email = \"mlr.developer@mb706.com\"), person(given = \"Marc\", family = \"Becker\", role = \"ctb\", email = \"marcbecker@posteo.de\", comment = c(ORCID = \"0000-0002-8115-0400\")))",
       "Description": "Define parameter spaces, constraints and dependencies for arbitrary algorithms, to program on such spaces. Also includes statistical designs and random samplers. Objects are implemented as 'R6' classes.",
       "License": "LGPL-3",
       "URL": "https://paradox.mlr-org.com, https://github.com/mlr-org/paradox",
@@ -1345,6 +1345,9 @@
         "R6"
       ],
       "Suggests": [
+        "rmarkdown",
+        "mlr3learners",
+        "e1071",
         "knitr",
         "lhs",
         "spacefillr",
@@ -1354,10 +1357,11 @@
       "Config/testthat/edition": "3",
       "Config/testthat/parallel": "false",
       "NeedsCompilation": "no",
-      "RoxygenNote": "7.2.1",
-      "Collate": "'Condition.R' 'Design.R' 'NoDefault.R' 'Param.R' 'ParamDbl.R' 'ParamFct.R' 'ParamInt.R' 'ParamLgl.R' 'ParamSet.R' 'ParamSetCollection.R' 'ParamUty.R' 'Sampler.R' 'Sampler1D.R' 'SamplerHierarchical.R' 'SamplerJointIndep.R' 'SamplerUnif.R' 'asserts.R' 'default_values.R' 'helper.R' 'domain.R' 'generate_design_grid.R' 'generate_design_lhs.R' 'generate_design_random.R' 'generate_design_sobol.R' 'ps.R' 'reexports.R' 'to_tune.R' 'zzz.R'",
-      "Author": "Michel Lang [cre, aut] (<https://orcid.org/0000-0001-9754-0393>), Bernd Bischl [aut] (<https://orcid.org/0000-0001-6002-6980>), Jakob Richter [aut] (<https://orcid.org/0000-0003-4481-5554>), Xudong Sun [aut] (<https://orcid.org/0000-0003-3269-2307>), Martin Binder [aut], Marc Becker [ctb] (<https://orcid.org/0000-0002-8115-0400>)",
-      "Maintainer": "Michel Lang <michellang@gmail.com>",
+      "RoxygenNote": "7.3.2",
+      "VignetteBuilder": "knitr",
+      "Collate": "'Condition.R' 'Design.R' 'Domain.R' 'Domain_methods.R' 'NoDefault.R' 'ParamDbl.R' 'ParamFct.R' 'ParamInt.R' 'ParamLgl.R' 'ParamSet.R' 'ParamSetCollection.R' 'ParamUty.R' 'Sampler.R' 'Sampler1D.R' 'SamplerHierarchical.R' 'SamplerJointIndep.R' 'SamplerUnif.R' 'asserts.R' 'default_values.R' 'generate_design_grid.R' 'generate_design_lhs.R' 'generate_design_random.R' 'generate_design_sobol.R' 'helper.R' 'ps.R' 'ps_replicate.R' 'ps_union.R' 'reexports.R' 'to_tune.R' 'zzz.R'",
+      "Author": "Michel Lang [aut] (<https://orcid.org/0000-0001-9754-0393>), Bernd Bischl [aut] (<https://orcid.org/0000-0001-6002-6980>), Jakob Richter [aut] (<https://orcid.org/0000-0003-4481-5554>), Xudong Sun [aut] (<https://orcid.org/0000-0003-3269-2307>), Martin Binder [aut, cre], Marc Becker [ctb] (<https://orcid.org/0000-0002-8115-0400>)",
+      "Maintainer": "Martin Binder <mlr.developer@mb706.com>",
       "Repository": "CRAN"
     },
     "parallelly": {

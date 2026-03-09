@@ -12,7 +12,8 @@
 #   desired_range = c(15, 25)
 #   mairep = MaxBox$new(pred, quiet = TRUE)
 #   mair = mairep$find_box(x_interest = x_interest, desired_range = desired_range, fixed_features = c("carb"))
-#   expect_true(all.equal(mair$box$params$carb$lower, mair$box$params$carb$upper, x_interest$carb))
+#   expect_true(all.equal(mair$box$lower[["carb"]], x_interest$carb))
+#   expect_true(all.equal(mair$box$upper[["carb"]], x_interest$carb))
 # })
 #
 
