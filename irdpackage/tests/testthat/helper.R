@@ -100,13 +100,16 @@ get_rule = function(pred) {
 }
 
 test_box1_overlap_box2 = function(box1, box2) {
-  all(mapply(function(p1, p2) {
-    return(switch(class(p1)[1],
-      "ParamDbl" =  p1$lower <= p2$lower & p1$upper >= p2$upper,
-      "ParamInt" =  p1$lower <= p2$lower & p1$upper >= p2$upper,
-      "ParamFct" = all(p2$levels %in% p1$levels)
-      ))
-  }, box1$params, box2$params))
+  ids = box1$ids()
+  all(mapply(function(j, cls) {
+    switch(cls,
+           "ParamDbl" = box1$lower[[j]] <= box2$lower[[j]] &&
+             box1$upper[[j]] >= box2$upper[[j]],
+           "ParamInt" = box1$lower[[j]] <= box2$lower[[j]] &&
+             box1$upper[[j]] >= box2$upper[[j]],
+           "ParamFct" = all(box2$levels[[j]] %in% box1$levels[[j]])
+    )
+  }, ids, box1$class[ids]))
 }
 
 get_box_classif_iris = function() {

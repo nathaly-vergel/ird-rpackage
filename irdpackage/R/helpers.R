@@ -5,9 +5,9 @@ make_param_set = function(dt, subset = NULL) {
       lb = if (col_name %in% names(subset) && !is.na(subset[[col_name]][1])) subset[[col_name]][1] else min(column)
       ub = if (col_name %in% names(subset) && !is.na(subset[[col_name]][2])) subset[[col_name]][2] else max(column)
       if (is.double(column)){
-        param = ParamDbl$new(col_name, lower = lb, upper = ub)
+        param = paradox::p_dbl(lower = lb, upper = ub)
       } else if (is.integer(column)) {
-        param = ParamInt$new(col_name, lower = lb, upper = ub)
+        param = paradox::p_int(lower = lb, upper = ub)
       }
     } else {
       if (is.character(column)) {
@@ -15,13 +15,14 @@ make_param_set = function(dt, subset = NULL) {
       } else {
         lev = if (col_name %in% names(subset)) as.character(subset[[col_name]]) else levels(column)[unique(column[!is.na(column)])]
       }
-      param = ParamFct$new(col_name, levels = lev)
+      param = paradox::p_fct(levels = lev)
     }
     param
   })
-
-  ps = ParamSet$new(param_list)
-  ps$trafo = function(x, param_set, predictor) {
+  # names(param_list) replaces id = colname
+  names(param_list) = names(dt)
+  ps = paradox::ParamSet$new(param_list)
+  ps$extra_trafo = function(x, param_set, predictor) {
     if (is.null(predictor)) {
       stop("trafo() of parameter set needs a 'predictor' input")
     }
@@ -29,7 +30,7 @@ make_param_set = function(dt, subset = NULL) {
     for (factor_col in factor_cols) {
       fact_col_pred = predictor$data$X[[factor_col]]
       value =  factor(x[[factor_col]], levels = levels(fact_col_pred), ordered = is.ordered(fact_col_pred))
-      set(x, j = factor_col, value = value)
+      data.table::set(x, j = factor_col, value = value)
     }
     return(x)
   }
@@ -37,22 +38,41 @@ make_param_set = function(dt, subset = NULL) {
 }
 
 update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, complement = TRUE) {
-
-  new_box = current_box$clone(deep = TRUE)
-  if (!is.null(lower) && !is.na(lower)) {
-    new_box$params[[j]]$lower = lower
+  # normalize j to an id -> now feature name (zB j = "age")
+  ids = current_box$ids()
+  if (is.numeric(j)) {
+    j = ids[[as.integer(j)]]
   }
 
-  if (!is.null(upper) && !is.na(upper)) {
-    new_box$params[[j]]$upper = upper
-  }
+  domains = current_box$domains
+  dom_old = domains[[j]]   # domain from feature to update
+  cls = current_box$class[[j]] # feature's type
 
-  if (all(!is.null(val)) && all(!is.na(val))) {
-    if (complement) {
-      val = unique(c(new_box$params[[j]]$levels, val))
+  if (cls %in% c("ParamInt", "ParamDbl")) {
+
+    lb = if (!is.null(lower) && !is.na(lower)) lower else dom_old$lower
+    ub = if (!is.null(upper) && !is.na(upper)) upper else dom_old$upper
+
+    if (cls == "ParamInt") {
+      domains[[j]] = paradox::p_int(lower = lb, upper = ub)
+    } else {
+      domains[[j]] = paradox::p_dbl(lower = lb, upper = ub)
     }
-    new_box$params[[j]]$levels = val
   }
+
+  if (cls == "ParamFct") {
+
+    if (all(!is.null(val)) && all(!is.na(val))) {
+      lev = val
+      if (complement) lev = unique(c(dom_old$levels[[1]], val))
+      domains[[j]] = paradox::p_fct(levels = lev)
+    }
+  }
+
+  # Rebuild a new ParamSet and add extra_trafo
+  new_box = paradox::ParamSet$new(params = domains)
+  new_box$extra_trafo = current_box$extra_trafo
+
   return(new_box)
 }
 
@@ -61,7 +81,7 @@ evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, st
   ## generate new data
   if (strategy == "random") {
     dt = SamplerUnif$new(box)$sample(n = n_samples)$data
-    dt = box$trafo(dt, predictor = predictor)
+    dt = box$extra_trafo(x = dt, predictor = predictor)
   } else if (strategy == "extremes") {
     low = box$lower
     low = low[!is.na(low)]
@@ -178,7 +198,7 @@ make_surface_plot = function(box,
     # obs in box
     col_num = dt_grid[[num_feature]]
     id = which(
-      dt_grid[[cat_feature]] == box$params[[cat_feature]]$levels &
+      dt_grid[[cat_feature]] == box$levels[[cat_feature]] &
         col_num >= box$lower[[num_feature]] &
         col_num <= box$upper[[num_feature]]
     )
@@ -227,7 +247,7 @@ make_ice_curve_area = function(predictor, x_interest, grid_size, ps, surface, de
   x_interest_sub = x_interest[, !names(x_interest) %in% names(ps$class), with = FALSE]
   instance_dt = x_interest_sub[rep(1:nrow(x_interest_sub), nrow(exp_grid))]
   grid_dt = cbind(instance_dt, exp_grid)
-  grid_dt = ps$trafo(grid_dt, predictor = predictor)
+  grid_dt = ps$extra_trafo(x = grid_dt, predictor = predictor)
   if (surface == "prediction") {
     pred = predictor$predict(grid_dt)[[1]]
   } else if (surface == "range") {
@@ -348,12 +368,12 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
       return(c(val_name, val_name))
     }
     ps_sub = param_set$clone(deep = TRUE)
-    ps_sub$subset(i_name)
+    ps_sub = ps_sub$subset(i_name)
     grid1d = paradox::generate_design_grid(ps_sub, resolution = resolution)$data
     x_interest_sub = data.table::copy(x_interest)
     x_interest_sub[, (i_name):=NULL]
     dt = data.table::data.table(grid1d, x_interest_sub)
-    param_set$trafo(dt, predictor = predictor)
+    dt = param_set$extra_trafo(x = dt, predictor = predictor)
     dt[, "pred"] = predictor$predict(dt)
     # select closest grid points to x_interest$i_name with a prediction outside desired range
     # If all grid point lower value of x_interest have a prediction within desired range --> lower = NA
@@ -377,16 +397,18 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
 }
 
 identify_in_box = function(box, data) {
+  ids = box$ids()  # feature names
   data = data.table::setDT(data)
-  data = data[, names(box$params), with = FALSE]
-  check_inbox = function(col, paramval) {
-    if (class(paramval)[1] %in% c("ParamInt", "ParamDbl")) {
-      col >= paramval$lower & col <= paramval$upper
-    } else {
-      col %in% paramval$levels
+  data = data[, ids, with = FALSE]
+  check_inbox = function(col, param_id) {
+    dom = box$get_domain(param_id)  # domain used to identify data type
+    if (paradox::domain_is_number(dom)) {
+      col >= box$lower[[param_id]] & col <= box$upper[[param_id]]
+    } else if (paradox::domain_is_categ(dom)) {
+      col %in% box$levels[[param_id]]
     }
   }
-  datainbox = data[, Map(check_inbox, .SD, box$params), .SDcols = names(data)]
+  datainbox = data[, Map(check_inbox, .SD, names(.SD)), .SDcols = ids]
   apply(datainbox, 1, all)
 }
 

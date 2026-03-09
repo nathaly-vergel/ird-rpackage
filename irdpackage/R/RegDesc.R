@@ -34,7 +34,7 @@ RegDesc = R6::R6Class("RegDesc",
         assert_names(fixed_features, subset.of = predictor$data$features.names)
       }
       assert_character(method)
-      assert_names(names(box$params), permutation.of = predictor$data$feature.names)
+      assert_names(box$ids(), permutation.of = predictor$data$feature.names)
 
       # assign
       private$.box = box
@@ -95,13 +95,13 @@ RegDesc = R6::R6Class("RegDesc",
     #' regional descriptor and using the stored predictor.
     #'
     #' @param feature_names (`character(2)`) Names of the two features to plot.
-    #' Must be contained in `names(private$.box$params)`.
+    #' Must be contained in `private$.box$ids()`.
     #' @param grid_size (`integer(1)`) Grid resolution for the surface (default 250).
     #' @param surface (`character(1)`) Which surface to plot: `"prediction"` or `"range"`.
     #' @return A `ggplot2` object.
     plot_surface = function(feature_names, grid_size = 250L, surface = "prediction") {
       assert_names(surface, subset.of = c("prediction", "range"))
-      assert_names(feature_names, subset.of = names(private$.box$params))
+      assert_names(feature_names, subset.of = private$.box$ids())
       if (!requireNamespace("ggplot2", quietly = TRUE)) {
         stop("Package 'ggplot2' needed for this function to work. Please install it.", call. = FALSE)
       }
