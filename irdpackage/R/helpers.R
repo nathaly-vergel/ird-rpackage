@@ -22,7 +22,7 @@ make_param_set = function(dt, subset = NULL) {
   # names(param_list) replaces id = colname
   names(param_list) = names(dt)
   ps = paradox::ParamSet$new(param_list)
-  ps$extra_trafo = function(x, param_set = self, predictor) {
+  ps$extra_trafo = function(x, param_set, predictor) {
     if (is.null(predictor)) {
       stop("trafo() of parameter set needs a 'predictor' input")
     }
