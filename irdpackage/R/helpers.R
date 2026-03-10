@@ -102,7 +102,7 @@ evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, st
   # private$check_in_box()
   # evaluate according to impurity --> lower better
   #impurity = nrow(dt[!pred %between% desired_range])/n_samples # Uses NSE
-  impurity = nrow(dt[!(dt[["pred"]] %between% desired_range)]) / n_samples
+  impurity = nrow(dt[!(dt[["pred"]] %between% desired_range)]) / nrow(dt)
   # evaluate according to distance to pred --> lower better
   dist = mean(abs(dt$pred - yhat_interest))
   return(c(impurity = impurity, dist = dist))
