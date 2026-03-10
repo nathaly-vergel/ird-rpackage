@@ -153,11 +153,20 @@ make_surface_plot = function(box,
       ggplot2::theme_bw() +
       ggplot2::theme(legend.position = "right") +
       ggplot2::geom_rect(
-        ggplot2::aes(color = "IRD (projected)"),
-        xmin = box$lower[[x_feat_name]],
-        xmax = box$upper[[x_feat_name]],
-        ymin = box$lower[[y_feat_name]],
-        ymax = box$upper[[y_feat_name]],
+        data = data.frame(
+          xmin = box$lower[[x_feat_name]],
+          xmax = box$upper[[x_feat_name]],
+          ymin = box$lower[[y_feat_name]],
+          ymax = box$upper[[y_feat_name]],
+          legend_label = "IRD (projected)"
+        ),
+        ggplot2::aes(
+          xmin = .data[["xmin"]],
+          xmax = .data[["xmax"]],
+          ymin = .data[["ymin"]],
+          ymax = .data[["ymax"]],
+          color = .data[["legend_label"]]
+        ),
         fill = NA,
         alpha = .3,
         inherit.aes = FALSE
@@ -203,18 +212,25 @@ make_surface_plot = function(box,
     frames[[x_feat_name]] = as.integer(factor(frames[[x_feat_name]], levels = levels(dt_grid[[x_feat_name]])))
     frames[[y_feat_name]] = as.integer(factor(frames[[y_feat_name]], levels = levels(dt_grid[[y_feat_name]])))
 
-    for (r in seq_len(nrow(frames))) {
-      p = p + ggplot2::geom_rect(
-        ggplot2::aes(color = "IRD (projected)"),
-        xmin = frames[r, x_feat_name] - 0.4,
-        xmax = frames[r, x_feat_name] + 0.4,
-        ymin = frames[r, y_feat_name] - 0.4,
-        ymax = frames[r, y_feat_name] + 0.4,
-        fill = NA,
-        alpha = .3,
-        inherit.aes = FALSE
-      )
-    }
+    frames$xmin = frames[[x_feat_name]] - 0.4
+    frames$xmax = frames[[x_feat_name]] + 0.4
+    frames$ymin = frames[[y_feat_name]] - 0.4
+    frames$ymax = frames[[y_feat_name]] + 0.4
+    frames$legend_label = "IRD (projected)"
+
+    p = p + ggplot2::geom_rect(
+      data = frames,
+      ggplot2::aes(
+        xmin = .data[["xmin"]],
+        xmax = .data[["xmax"]],
+        ymin = .data[["ymin"]],
+        ymax = .data[["ymax"]],
+        color = .data[["legend_label"]]
+      ),
+      fill = NA,
+      alpha = .3,
+      inherit.aes = FALSE
+    )
 
   } else {
 
