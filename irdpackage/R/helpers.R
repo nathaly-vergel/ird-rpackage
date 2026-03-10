@@ -191,7 +191,10 @@ make_surface_plot = function(box,
       ggplot2::theme_bw() +
       ggplot2::scale_color_manual(
         name = NULL,
-        values = c("x_interest" = "red")
+        values = c(
+          "x_interest" = "red",
+          "IRD (projected)" = "yellow"
+        )
       )
 
     # value combinations inside the box
@@ -202,11 +205,14 @@ make_surface_plot = function(box,
 
     for (r in seq_len(nrow(frames))) {
       p = p + ggplot2::geom_rect(
+        ggplot2::aes(color = "IRD (projected)"),
         xmin = frames[r, x_feat_name] - 0.4,
         xmax = frames[r, x_feat_name] + 0.4,
         ymin = frames[r, y_feat_name] - 0.4,
         ymax = frames[r, y_feat_name] + 0.4,
-        color = "yellow", fill = NA, alpha = .3
+        fill = NA,
+        alpha = .3,
+        inherit.aes = FALSE
       )
     }
 
