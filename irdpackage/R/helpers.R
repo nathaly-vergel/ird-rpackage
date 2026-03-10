@@ -125,6 +125,13 @@ make_surface_plot = function(box,
                                 param_set_sub,
                                 surface = surface,
                                 desired_range = desired_range)
+  if (surface == "range") {
+    dt_grid$pred = factor(
+      dt_grid$pred,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    )
+  }
 
   x_feat_name = feature_names[1L]
   y_feat_name = feature_names[2L]
@@ -143,7 +150,6 @@ make_surface_plot = function(box,
         position = ggplot2::position_jitter(),
         sides = "bl"
       ) +
-      ggplot2::guides(z = ggplot2::guide_legend(title = "pred")) +
       ggplot2::theme_bw() +
       ggplot2::theme(legend.position = "right") +
       ggplot2::geom_rect(
@@ -237,9 +243,10 @@ make_surface_plot = function(box,
         ggplot2::aes(
           x = .data[[num_feature]],
           y = .data[["pred"]],
-          group = .data[[cat_feature]]
+          group = .data[[cat_feature]],
+          color = "IRD (projected)"
         ),
-        color = "yellow", lwd = 3
+        lwd = 3
       ) +
       ggplot2::geom_line() +
       ggplot2::geom_rug(
@@ -258,8 +265,44 @@ make_surface_plot = function(box,
       ggplot2::scale_shape_manual(
         name = NULL,
         values = c("x_interest" = 16)
+      ) +
+      ggplot2::scale_color_manual(
+        name = NULL,
+        values = c(
+          stats::setNames(
+            scales::hue_pal()(length(levels(dt_grid[[cat_feature]]))),
+            levels(dt_grid[[cat_feature]])
+          ),
+          "IRD (projected)" = "yellow"
+        )
       )
   }
+
+  if (surface == "prediction") {
+    p = p + ggplot2::scale_fill_gradient(
+      name = "Prediction"
+    )
+  } else if (surface == "range") {
+    p = p + ggplot2::scale_fill_manual(
+      name = "Prediction in Y'",
+      values = c("No" = "grey30", "Yes" = "lightskyblue")
+    )
+  }
+  # Add the title
+  range_label = if (is.null(desired_range)) {
+    "Y' = all predictions"
+  } else {
+    paste0("Y' = [", paste(desired_range, collapse = ", "), "]")
+  }
+
+  title_text = paste(
+    "Prediction surface over",
+    feature_names[1], "and", feature_names[2]
+  )
+
+  subtitle_text = paste("Desired range", range_label)
+
+  p = p + ggplot2::labs(title = title_text, subtitle = subtitle_text)
 
   p
 }
