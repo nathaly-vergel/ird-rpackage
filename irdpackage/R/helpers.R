@@ -1,9 +1,12 @@
 make_param_set = function(dt, subset = NULL) {
+  if (anyNA(dt)) {
+    warning("Missing values detected in the training dataset. Numeric bounds and categorical levels are computed ignoring NA values.")
+  }
   param_list = lapply(names(dt), function(col_name){
     column = dt[[col_name]]
     if (is.numeric(column)) {
-      lb = if (col_name %in% names(subset) && !is.na(subset[[col_name]][1])) subset[[col_name]][1] else min(column)
-      ub = if (col_name %in% names(subset) && !is.na(subset[[col_name]][2])) subset[[col_name]][2] else max(column)
+      lb = if (col_name %in% names(subset) && !is.na(subset[[col_name]][1])) subset[[col_name]][1] else min(column, na.rm = TRUE)
+      ub = if (col_name %in% names(subset) && !is.na(subset[[col_name]][2])) subset[[col_name]][2] else max(column, na.rm = TRUE)
       if (is.double(column)){
         param = paradox::p_dbl(lower = lb, upper = ub)
       } else if (is.integer(column)) {
@@ -11,7 +14,7 @@ make_param_set = function(dt, subset = NULL) {
       }
     } else {
       if (is.character(column)) {
-        lev = if (col_name %in% names(subset)) subset[[col_name]] else unique(column)
+        lev = if (col_name %in% names(subset)) subset[[col_name]] else unique(column[!is.na(column)])
       } else {
         lev = if (col_name %in% names(subset)) as.character(subset[[col_name]]) else levels(column)[unique(column[!is.na(column)])]
       }
