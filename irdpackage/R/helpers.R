@@ -96,6 +96,7 @@ evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, st
     lev[sapply(lev, is.null)] <- NULL
     l = c(lev, vall)
     dt = data.table(expand.grid(l))
+    dt = box$extra_trafo(x = dt, predictor = predictor)
   }
   dt$pred = predictor$predict(dt)
   ## reuse generated one
