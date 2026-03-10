@@ -147,16 +147,26 @@ make_surface_plot = function(box,
       ggplot2::theme_bw() +
       ggplot2::theme(legend.position = "right") +
       ggplot2::geom_rect(
+        ggplot2::aes(color = "IRD (projected)"),
         xmin = box$lower[[x_feat_name]],
         xmax = box$upper[[x_feat_name]],
         ymin = box$lower[[y_feat_name]],
         ymax = box$upper[[y_feat_name]],
-        color = "yellow", fill = NA, alpha = .3
+        fill = NA,
+        alpha = .3,
+        inherit.aes = FALSE
       ) +
       ggplot2::geom_point(
         data = x_interest,
-        ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]]),
-        colour = "white"
+        ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]], color = "x_interest"),
+        size = 4
+      ) +
+      ggplot2::scale_color_manual(
+        name = NULL,
+        values = c(
+          "x_interest" = "red",
+          "IRD (projected)" = "yellow"
+        )
       )
 
   } else if (param_set_sub$all_categorical) {
@@ -168,11 +178,15 @@ make_surface_plot = function(box,
       ggplot2::geom_tile(ggplot2::aes(fill = .data[["pred"]])) +
       ggplot2::geom_point(
         data = x_interest,
-        ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]]),
-        color = "white"
+        ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]], color = "x_interest"),
+        size = 4
       ) +
       ggplot2::guides(fill = ggplot2::guide_legend(title = "pred")) +
-      ggplot2::theme_bw()
+      ggplot2::theme_bw() +
+      ggplot2::scale_color_manual(
+        name = NULL,
+        values = c("x_interest" = "red")
+      )
 
     # value combinations inside the box
     frames = expand.grid(box$levels[[x_feat_name]], box$levels[[y_feat_name]])
@@ -237,8 +251,13 @@ make_surface_plot = function(box,
       ggplot2::theme_bw() +
       ggplot2::geom_point(
         data = x_interest_with_pred,
-        ggplot2::aes(x = .data[[num_feature]], y = .data[["pred"]]),
-        colour = "black"
+        ggplot2::aes(x = .data[[num_feature]], y = .data[["pred"]], shape = "x_interest"),
+        colour = "red",
+        size = 3
+      ) +
+      ggplot2::scale_shape_manual(
+        name = NULL,
+        values = c("x_interest" = 16)
       )
   }
 
