@@ -155,7 +155,11 @@ make_surface_plot = function(box,
   x_feat_name = feature_names[1L]
   y_feat_name = feature_names[2L]
 
+  uses_fill = FALSE
+
   if (param_set_sub$all_numeric) {
+
+    uses_fill = TRUE
 
     p = ggplot2::ggplot(
       data = dt_grid,
@@ -193,7 +197,7 @@ make_surface_plot = function(box,
       ggplot2::geom_point(
         data = x_interest,
         ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]], color = "x_interest"),
-        size = 4
+        size = 2
       ) +
       ggplot2::scale_color_manual(
         name = NULL,
@@ -205,6 +209,8 @@ make_surface_plot = function(box,
 
   } else if (param_set_sub$all_categorical) {
 
+    uses_fill = TRUE
+
     p = ggplot2::ggplot(
       dt_grid,
       ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]])
@@ -213,7 +219,7 @@ make_surface_plot = function(box,
       ggplot2::geom_point(
         data = x_interest,
         ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]], color = "x_interest"),
-        size = 4
+        size = 2
       ) +
       ggplot2::guides(fill = ggplot2::guide_legend(title = "pred")) +
       ggplot2::theme_bw() +
@@ -301,7 +307,7 @@ make_surface_plot = function(box,
         data = x_interest_with_pred,
         ggplot2::aes(x = .data[[num_feature]], y = .data[["pred"]], shape = "x_interest"),
         colour = "red",
-        size = 3
+        size = 2
       ) +
       ggplot2::scale_shape_manual(
         name = NULL,
@@ -311,7 +317,7 @@ make_surface_plot = function(box,
         name = NULL,
         values = c(
           stats::setNames(
-            scales::hue_pal()(length(levels(dt_grid[[cat_feature]]))),
+            grDevices::hcl.colors(length(levels(dt_grid[[cat_feature]])), "Dark 3"),
             levels(dt_grid[[cat_feature]])
           ),
           "IRD (projected)" = "yellow"
@@ -319,15 +325,17 @@ make_surface_plot = function(box,
       )
   }
 
-  if (surface == "prediction") {
-    p = p + ggplot2::scale_fill_gradient(
-      name = "Prediction"
-    )
-  } else if (surface == "range") {
-    p = p + ggplot2::scale_fill_manual(
-      name = "Prediction in Y'",
-      values = c("No" = "grey30", "Yes" = "lightskyblue")
-    )
+  if (uses_fill) {
+    if (surface == "prediction") {
+      p = p + ggplot2::scale_fill_gradient(
+        name = "Prediction"
+        )
+    } else if (surface == "range") {
+      p = p + ggplot2::scale_fill_manual(
+        name = "Prediction in Y'",
+        values = c("No" = "grey30", "Yes" = "lightskyblue")
+      )
+    }
   }
   # Add the title
   range_label = if (is.null(desired_range)) {
