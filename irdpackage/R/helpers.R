@@ -56,6 +56,25 @@ update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, co
     lb = if (!is.null(lower) && !is.na(lower)) lower else dom_old$lower
     ub = if (!is.null(upper) && !is.na(upper)) upper else dom_old$upper
 
+    # Verify integer bounds
+    if (cls == "ParamInt") {
+      if (lb != round(lb) || ub != round(ub)) {
+        stop(sprintf(
+          "Invalid bounds for integer parameter '%s': lower = %s, upper = %s. Both must be integers.",
+          j, lb, ub
+        ))
+      }
+    }
+
+    # Verify that lower <= upper
+    if (lb > ub) {
+      stop(sprintf(
+        "Invalid bounds for parameter '%s': lower (%s) must be <= upper (%s).",
+        j, lb, ub
+      ))
+    }
+
+    # Update the bounds according to type
     if (cls == "ParamInt") {
       domains[[j]] = paradox::p_int(lower = lb, upper = ub)
     } else {
