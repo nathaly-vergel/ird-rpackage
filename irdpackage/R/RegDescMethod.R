@@ -37,7 +37,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
       cat("Parameters:\n")
       private$print_parameters()
     },
-    #'
+    #' @description
     #' Runs the hyperrectangle searching algorithm and returns the hyperrectangles interval ranges.
     #' All observations in the hyperrectangle should have a predicted probability in the interval `desired_prob`
     #' (for classification for a `desired_class`).
@@ -51,7 +51,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     #'   `desired_class` and must lie in the interval [0, 1].
     #' @param desired_class (`character(1)` | `NULL`) \cr The desired class. Ignored if predictor$task = "regression".
     #' If NULL (default) for a classification task then predictor$class is taken.
-    #' @param obsdata (`data.table` | `data.frame`) Data set used to find the box. If NULL (default) either
+    #' @param obsdata (`data.table` | `data.frame`) \cr Data set used to find the box. If NULL (default) either
     #' predictor$data or newly sampled data according to the specified `strategy` is used.
     #' @param fixed_features (`character()` | `NULL`) \cr
     #' Names of features that are not allowed to be changed. NULL (default) allows all features to be changed.
@@ -62,66 +62,15 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     find_box = function(x_interest, desired_range = NULL, obsdata = NULL, fixed_features = NULL, desired_class = NULL, box_largest = NULL, box_init = NULL) {
 
       # Checks x_interest
-      assert_data_frame(x_interest, nrows = 1L)
-      assert_names(names(x_interest), must.include = names(private$predictor$data$X))
-      x_interest = setDT(x_interest)[, names(private$predictor$data$X), with = FALSE]
-      # x_interest = data.table::data.table(x_interest)[, names(private$predictor$data$X), with = FALSE]
-      if (any(sapply(x_interest, typeof) != sapply(private$predictor$data$X, typeof))) {
-        stop("Columns that appear in `x_interest` and `predictor$data$X` must have the same types.")
-      }
-
-      f_hat_interest = private$predictor$predict(x_interest)
+      x_interest = private$validate_x_interest(x_interest)
 
       # Check desired_class
-      if (private$predictor$task == "classification") {
-        if (is.null(desired_class)) {
-          if (is.null(private$predictor$class)) {
-            stop("For classification models `desired_class` must be specified when calling $find_box().")
-          } else {
-            desired_class = private$predictor$class
-            message(sprintf("The `desired_class` was set to `predictor$class` which is %s.", desired_class))
-          }
-        }
-        assert_character(desired_class, len = 1L, any.missing = FALSE)
-        assert_choice(desired_class, choices = names(f_hat_interest))
-        private$predictor$class = desired_class
-        f_hat_interest = private$predictor$predict(x_interest)[[1]]
-      } else {
-        if (!is.null(desired_class)) {
-          message(sprintf("For regression models `desired_class = %s` is ignored.", desired_class))
-        }
-      }
+      prediction_info = private$resolve_desired_class_and_prediction(x_interest = x_interest, desired_class = desired_class)
+      desired_class = prediction_info$desired_class
+      f_hat_interest = prediction_info$f_hat_interest
 
       # Check desired_range
-
-      checkmate::assert_numeric(desired_range, min.len = 1L,  max.len = 2L,
-        null.ok = TRUE)
-      if (is.null(desired_range)) {
-        f_hat_data = private$predictor$predict(private$predictor$data$get.x())[[1]]
-        sdf_hat = 1/2*sd(f_hat_data)
-        desired_range = c(f_hat_interest[[1]] - sdf_hat, f_hat_interest[[1]] + sdf_hat)
-        if (private$predictor$task == "classification") {
-          # cap between 0 and 1
-          desired_range = c(max(min(desired_range), 0), min(max(desired_range), 1))
-        }
-        message(sprintf("'desired_range' is NULL. Using 1/2 standard deviation of predictions of observed data (predictor$data), it was set to 'c(%f, %f)'.",
-          desired_range[1], desired_range[2]))
-      } else {
-        if (private$predictor$task == "classification") {
-          checkmate::assert_numeric(desired_range, min.len = 1L,  max.len = 2L,
-            lower = 0, upper = 1)
-        }
-        if (length(desired_range) == 1L) {
-          desired_range = c(desired_range, desired_range)
-        }
-        if (desired_range[2L] < desired_range[1L]) {
-          stop("The lower bound of `desired_range` cannot be greater than the upper bound.")
-        }
-        if (f_hat_interest < desired_range[1] | f_hat_interest > desired_range[2]) {
-          stop(sprintf("`desired_range` must cover the prediction of `x_interest` of %s", round(f_hat_interest, 3)))
-        }
-      }
-
+      desired_range = private$resolve_desired_range(desired_range = desired_range, f_hat_interest = f_hat_interest)
 
       # Check fixed_features (here)
       if (!is.null(fixed_features)) {
@@ -135,6 +84,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
         # <FIXME:> Take update fixed_features into account!
       }
 
+      # Check box_largest
       assert_class(box_largest, "ParamSet", null.ok = TRUE)
        if (!is.null(box_largest)) {
         assert_set_equal(box_largest$ids(), private$predictor$data$feature.names)
@@ -206,6 +156,98 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     box_init = NULL,
     .history = NULL,
     .calls_fhat = NULL,
+    validate_x_interest = function(x_interest) {
+      assert_data_frame(x_interest, nrows = 1L)
+      assert_names(names(x_interest), must.include = names(private$predictor$data$X))
+
+      x_interest = data.table::as.data.table(x_interest)[, names(private$predictor$data$X), with = FALSE]
+
+      if (any(sapply(x_interest, typeof) != sapply(private$predictor$data$X, typeof))) {
+        stop("Columns that appear in `x_interest` and `predictor$data$X` must have the same types.")
+      }
+
+      return(x_interest)
+    },
+    resolve_desired_class_and_prediction = function(x_interest, desired_class) {
+      f_hat_interest = private$predictor$predict(x_interest)
+
+      if (private$predictor$task == "classification") {
+        if (is.null(desired_class)) {
+          if (is.null(private$predictor$class)) {
+            stop("For classification models `desired_class` must be specified when calling $find_box().")
+          } else {
+            desired_class = private$predictor$class
+            message(sprintf(
+              "The `desired_class` was set to `predictor$class` which is %s.",
+              desired_class
+            ))
+          }
+        }
+
+        assert_character(desired_class, len = 1L, any.missing = FALSE)
+        assert_choice(desired_class, choices = names(f_hat_interest))
+
+        private$predictor$class = desired_class
+        f_hat_interest = private$predictor$predict(x_interest)[[1]]
+      } else {
+        if (!is.null(desired_class)) {
+          message(sprintf(
+            "For regression models `desired_class = %s` is ignored.",
+            desired_class
+          ))
+        }
+      }
+
+      list(
+        desired_class = desired_class,
+        f_hat_interest = f_hat_interest
+      )
+    },
+    resolve_desired_range = function(desired_range, f_hat_interest) {
+      checkmate::assert_numeric(desired_range, min.len = 1L, max.len = 2L, null.ok = TRUE)
+
+      if (is.null(desired_range)) {
+        f_hat_data = private$predictor$predict(private$predictor$data$get.x())[[1]]
+        sdf_hat = 1 / 2 * sd(f_hat_data)
+        desired_range = c(f_hat_interest[[1]] - sdf_hat, f_hat_interest[[1]] + sdf_hat)
+
+        if (private$predictor$task == "classification") {
+          desired_range = c(max(min(desired_range), 0), min(max(desired_range), 1))
+        }
+
+        message(sprintf(
+          "'desired_range' is NULL. Using 1/2 standard deviation of predictions of observed data (predictor$data), it was set to 'c(%f, %f)'.",
+          desired_range[1], desired_range[2]
+        ))
+      } else {
+        if (private$predictor$task == "classification") {
+          checkmate::assert_numeric(
+            desired_range,
+            min.len = 1L,
+            max.len = 2L,
+            lower = 0,
+            upper = 1
+          )
+        }
+
+        if (length(desired_range) == 1L) {
+          desired_range = c(desired_range, desired_range)
+        }
+
+        if (desired_range[2L] < desired_range[1L]) {
+          stop("The lower bound of `desired_range` cannot be greater than the upper bound.")
+        }
+
+        if (f_hat_interest < desired_range[1] || f_hat_interest > desired_range[2]) {
+          stop(sprintf(
+            "`desired_range` must cover the prediction of `x_interest` of %s",
+            round(f_hat_interest, 3)
+          ))
+        }
+      }
+
+      desired_range
+    },
     sanitize_box = function(box) {
 
       domains = box$domains
