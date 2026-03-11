@@ -46,10 +46,9 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     #' @param desired_range (`numeric(2)`) \cr
     #'   The desired predicted outcome range - a vector with two numeric values
     #'   that specify an outcome interval.
-    #'   For regression the interval operates on the numeric outcome,
-    #'   while for classification it reflects either a hard label or
-    #'   the probability for the class with the largest probability among all
-    #'   possible outcome classes.
+    #'   For regression the interval operates on the numeric prediction.
+    #'   For classification it refers to the predicted probability of
+    #'   `desired_class` and must lie in the interval [0, 1].
     #' @param desired_class (`character(1)` | `NULL`) \cr The desired class. Ignored if predictor$task = "regression".
     #' If NULL (default) for a classification task then predictor$class is taken.
     #' @param obsdata (`data.table` | `data.frame`) Data set used to find the box. If NULL (default) either
