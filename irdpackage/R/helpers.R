@@ -543,8 +543,8 @@ sampling = function(predictor, x_interest, fixed_features, desired_range, param_
     predictor = predictor, param_set = param_set, desired_range = desired_range)
 
   if (strategy == "traindata") {
-    sampdata = copy(predictor$data$get.x())
-    if (!is.null(fixed_features) & strategy == "traindata")  {
+    sampdata = data.table::copy(predictor$data$get.x())
+    if (!is.null(fixed_features))  {
       sampdata = sampdata[, (fixed_features) :=
           x_interest[, fixed_features, with = FALSE]]
     }
@@ -553,13 +553,7 @@ sampling = function(predictor, x_interest, fixed_features, desired_range, param_
   } else if (strategy == "sampled") {
 
     sampdata = SamplerUnif$new(largest_box)$sample(n = num_sampled_points)$data
-
-    factor_cols = names(which(sapply(predictor$data$X, is.factor)))
-    for (factor_col in factor_cols) {
-      fact_col_pred = predictor$data$X[[factor_col]]
-      value =  factor(sampdata[[factor_col]], levels = levels(fact_col_pred), ordered = is.ordered(fact_col_pred))
-      set(sampdata, j = factor_col, value = value)
-    }
+    sampdata = largest_box$extra_trafo(x = sampdata, predictor = predictor)
   }
   return(sampdata)
 }
