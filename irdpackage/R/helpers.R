@@ -503,8 +503,8 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
       dt = dt[!pred %between% desired_range,]
       dt[,"dist"] = abs(dt[[i_name]] - val_name)
       dt = dt[order(dist),]
-      lower = dt[eval(parse(text=i_name)) < val_name][1,][[(i_name)]]
-      upper = dt[eval(parse(text=i_name)) > val_name][1,][[(i_name)]]
+      lower = dt[dt[[i_name]] < val_name][1,][[(i_name)]]
+      upper = dt[dt[[i_name]] > val_name][1,][[(i_name)]]
       return (c(lower, upper))
     }
   })
