@@ -8,7 +8,7 @@ Abstract base class for regional descriptors methods.
 }
 \section{Inheritance}{
 
-Child classes: \link{Prim}, \link{Maire}
+Child classes: \link{Prim}, \link{Maire}, \link{MaxBox}, \link{PostProcessing}
 }
 
 \section{Active bindings}{

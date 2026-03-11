@@ -4,7 +4,7 @@
 #' Abstract base class for regional descriptors methods.
 #'
 #' @section Inheritance:
-#' Child classes: \link{Prim}, \link{Maire}
+#' Child classes: \link{Prim}, \link{Maire}, \link{MaxBox}, \link{PostProcessing}
 RegDescMethod = R6::R6Class("RegDescMethod",
 
   public = list(
