@@ -479,8 +479,11 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
     val_name = x_interest[[i_name]]
     type_name = predictor$data$feature.types[[i_name]]
     if (i_name %in% fixed_features) {
-      if (type_name == "categorical") return(val_name) else c(val_name, val_name)
-      return(c(val_name, val_name))
+      if (type_name == "categorical") {
+        return(val_name)
+      } else { # if age is fixed to 27
+        return(c(val_name, val_name)) # c(27, 27)
+        }
     }
     ps_sub = param_set$clone(deep = TRUE)
     ps_sub = ps_sub$subset(i_name)
