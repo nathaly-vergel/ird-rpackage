@@ -16,15 +16,17 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     #' @param quiet (`logical(1)`)\cr Should information about the optimization status be hidden? Default is FALSE.
     initialize = function(predictor, quiet = FALSE) {
       checkmate::assert_class(predictor, "Predictor")
-      if (predictor$task == "unknown") {
-        predictor$task = NULL
-        predictor$predict(predictor$data$X[1:2, ])
-      }
 
       private$predictor = predictor$clone()
+
+      if (private$predictor$task == "unknown") {
+        private$predictor$task = NULL
+        private$predictor$predict(private$predictor$data$X[1:2, ])
+      }
+
       private$quiet = quiet
       # maximum box from available data
-      private$param_set = make_param_set(predictor$data$X)
+      private$param_set = make_param_set(private$predictor$data$X)
     },
 
     #' @description
