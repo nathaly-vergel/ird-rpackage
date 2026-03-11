@@ -8,7 +8,7 @@ Abstract base class for regional descriptors methods.
 }
 \section{Inheritance}{
 
-Child classes: \link{Prim}, \link{Maire}
+Child classes: \link{Prim}, \link{Maire}, \link{MaxBox}, \link{PostProcessing}
 }
 
 \section{Active bindings}{
@@ -60,10 +60,6 @@ learning model and the data.}
 \subsection{Method \code{print()}}{
 Prints a `RegDescMethod` object.
 The method calls a (private) `$print_parameters()` method which should be implemented by the leaf classes.
-
-Runs the hyperrectangle searching algorithm and returns the hyperrectangles interval ranges.
-All observations in the hyperrectangle should have a predicted probability in the interval `desired_prob`
-(for classification for a `desired_class`).
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDescMethod$print()}\if{html}{\out{</div>}}
 }
@@ -73,6 +69,9 @@ All observations in the hyperrectangle should have a predicted probability in th
 \if{html}{\out{<a id="method-RegDescMethod-find_box"></a>}}
 \if{latex}{\out{\hypertarget{method-RegDescMethod-find_box}{}}}
 \subsection{Method \code{find_box()}}{
+Runs the hyperrectangle searching algorithm and returns the hyperrectangles interval ranges.
+All observations in the hyperrectangle should have a predicted probability in the interval `desired_prob`
+(for classification for a `desired_class`).
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDescMethod$find_box(
   x_interest,
@@ -93,12 +92,11 @@ All observations in the hyperrectangle should have a predicted probability in th
 \item{\code{desired_range}}{(`numeric(2)`) \cr
 The desired predicted outcome range - a vector with two numeric values
 that specify an outcome interval.
-For regression the interval operates on the numeric outcome,
-while for classification it reflects either a hard label or
-the probability for the class with the largest probability among all
-possible outcome classes.}
+For regression the interval operates on the numeric prediction.
+For classification it refers to the predicted probability of
+`desired_class` and must lie in the interval [0, 1].}
 
-\item{\code{obsdata}}{(`data.table` | `data.frame`) Data set used to find the box. If NULL (default) either
+\item{\code{obsdata}}{(`data.table` | `data.frame`) \cr Data set used to find the box. If NULL (default) either
 predictor$data or newly sampled data according to the specified `strategy` is used.}
 
 \item{\code{fixed_features}}{(`character()` | `NULL`) \cr
