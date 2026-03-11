@@ -101,6 +101,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
 
       # Set number of calls to fhat to 0
       private$.calls_fhat = 0
+      private$.history = NULL
 
       private$x_interest = x_interest
       private$f_hat_interest = f_hat_interest
