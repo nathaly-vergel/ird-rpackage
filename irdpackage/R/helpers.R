@@ -1,9 +1,12 @@
 make_param_set = function(dt, subset = NULL) {
+  if (anyNA(dt)) {
+    warning("Missing values detected in the training dataset. Numeric bounds and categorical levels are computed ignoring NA values.")
+  }
   param_list = lapply(names(dt), function(col_name){
     column = dt[[col_name]]
     if (is.numeric(column)) {
-      lb = if (col_name %in% names(subset) && !is.na(subset[[col_name]][1])) subset[[col_name]][1] else min(column)
-      ub = if (col_name %in% names(subset) && !is.na(subset[[col_name]][2])) subset[[col_name]][2] else max(column)
+      lb = if (col_name %in% names(subset) && !is.na(subset[[col_name]][1])) subset[[col_name]][1] else min(column, na.rm = TRUE)
+      ub = if (col_name %in% names(subset) && !is.na(subset[[col_name]][2])) subset[[col_name]][2] else max(column, na.rm = TRUE)
       if (is.double(column)){
         param = paradox::p_dbl(lower = lb, upper = ub)
       } else if (is.integer(column)) {
@@ -11,7 +14,7 @@ make_param_set = function(dt, subset = NULL) {
       }
     } else {
       if (is.character(column)) {
-        lev = if (col_name %in% names(subset)) subset[[col_name]] else unique(column)
+        lev = if (col_name %in% names(subset)) subset[[col_name]] else unique(column[!is.na(column)])
       } else {
         lev = if (col_name %in% names(subset)) as.character(subset[[col_name]]) else levels(column)[unique(column[!is.na(column)])]
       }
@@ -53,6 +56,25 @@ update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, co
     lb = if (!is.null(lower) && !is.na(lower)) lower else dom_old$lower
     ub = if (!is.null(upper) && !is.na(upper)) upper else dom_old$upper
 
+    # Verify integer bounds
+    if (cls == "ParamInt") {
+      if (lb != round(lb) || ub != round(ub)) {
+        stop(sprintf(
+          "Invalid bounds for integer parameter '%s': lower = %s, upper = %s. Both must be integers.",
+          j, lb, ub
+        ))
+      }
+    }
+
+    # Verify that lower <= upper
+    if (lb > ub) {
+      stop(sprintf(
+        "Invalid bounds for parameter '%s': lower (%s) must be <= upper (%s).",
+        j, lb, ub
+      ))
+    }
+
+    # Update the bounds according to type
     if (cls == "ParamInt") {
       domains[[j]] = paradox::p_int(lower = lb, upper = ub)
     } else {
@@ -93,13 +115,14 @@ evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, st
     lev[sapply(lev, is.null)] <- NULL
     l = c(lev, vall)
     dt = data.table(expand.grid(l))
+    dt = box$extra_trafo(x = dt, predictor = predictor)
   }
   dt$pred = predictor$predict(dt)
   ## reuse generated one
   # private$check_in_box()
   # evaluate according to impurity --> lower better
   #impurity = nrow(dt[!pred %between% desired_range])/n_samples # Uses NSE
-  impurity = nrow(dt[!(dt[["pred"]] %between% desired_range)]) / n_samples
+  impurity = nrow(dt[!(dt[["pred"]] %between% desired_range)]) / nrow(dt)
   # evaluate according to distance to pred --> lower better
   dist = mean(abs(dt$pred - yhat_interest))
   return(c(impurity = impurity, dist = dist))
@@ -121,11 +144,22 @@ make_surface_plot = function(box,
                                 param_set_sub,
                                 surface = surface,
                                 desired_range = desired_range)
+  if (surface == "range") {
+    dt_grid$pred = factor(
+      dt_grid$pred,
+      levels = c(0, 1),
+      labels = c("No", "Yes")
+    )
+  }
 
   x_feat_name = feature_names[1L]
   y_feat_name = feature_names[2L]
 
+  uses_fill = FALSE
+
   if (param_set_sub$all_numeric) {
+
+    uses_fill = TRUE
 
     p = ggplot2::ggplot(
       data = dt_grid,
@@ -139,23 +173,43 @@ make_surface_plot = function(box,
         position = ggplot2::position_jitter(),
         sides = "bl"
       ) +
-      ggplot2::guides(z = ggplot2::guide_legend(title = "pred")) +
       ggplot2::theme_bw() +
       ggplot2::theme(legend.position = "right") +
       ggplot2::geom_rect(
-        xmin = box$lower[[x_feat_name]],
-        xmax = box$upper[[x_feat_name]],
-        ymin = box$lower[[y_feat_name]],
-        ymax = box$upper[[y_feat_name]],
-        color = "yellow", fill = NA, alpha = .3
+        data = data.frame(
+          xmin = box$lower[[x_feat_name]],
+          xmax = box$upper[[x_feat_name]],
+          ymin = box$lower[[y_feat_name]],
+          ymax = box$upper[[y_feat_name]],
+          legend_label = "IRD (projected)"
+        ),
+        ggplot2::aes(
+          xmin = .data[["xmin"]],
+          xmax = .data[["xmax"]],
+          ymin = .data[["ymin"]],
+          ymax = .data[["ymax"]],
+          color = .data[["legend_label"]]
+        ),
+        fill = NA,
+        alpha = .3,
+        inherit.aes = FALSE
       ) +
       ggplot2::geom_point(
         data = x_interest,
-        ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]]),
-        colour = "white"
+        ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]], color = "x_interest"),
+        size = 2
+      ) +
+      ggplot2::scale_color_manual(
+        name = NULL,
+        values = c(
+          "x_interest" = "red",
+          "IRD (projected)" = "yellow"
+        )
       )
 
   } else if (param_set_sub$all_categorical) {
+
+    uses_fill = TRUE
 
     p = ggplot2::ggplot(
       dt_grid,
@@ -164,11 +218,18 @@ make_surface_plot = function(box,
       ggplot2::geom_tile(ggplot2::aes(fill = .data[["pred"]])) +
       ggplot2::geom_point(
         data = x_interest,
-        ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]]),
-        color = "white"
+        ggplot2::aes(x = .data[[x_feat_name]], y = .data[[y_feat_name]], color = "x_interest"),
+        size = 2
       ) +
       ggplot2::guides(fill = ggplot2::guide_legend(title = "pred")) +
-      ggplot2::theme_bw()
+      ggplot2::theme_bw() +
+      ggplot2::scale_color_manual(
+        name = NULL,
+        values = c(
+          "x_interest" = "red",
+          "IRD (projected)" = "yellow"
+        )
+      )
 
     # value combinations inside the box
     frames = expand.grid(box$levels[[x_feat_name]], box$levels[[y_feat_name]])
@@ -176,15 +237,25 @@ make_surface_plot = function(box,
     frames[[x_feat_name]] = as.integer(factor(frames[[x_feat_name]], levels = levels(dt_grid[[x_feat_name]])))
     frames[[y_feat_name]] = as.integer(factor(frames[[y_feat_name]], levels = levels(dt_grid[[y_feat_name]])))
 
-    for (r in seq_len(nrow(frames))) {
-      p = p + ggplot2::geom_rect(
-        xmin = frames[r, x_feat_name] - 0.4,
-        xmax = frames[r, x_feat_name] + 0.4,
-        ymin = frames[r, y_feat_name] - 0.4,
-        ymax = frames[r, y_feat_name] + 0.4,
-        color = "yellow", fill = NA, alpha = .3
-      )
-    }
+    frames$xmin = frames[[x_feat_name]] - 0.4
+    frames$xmax = frames[[x_feat_name]] + 0.4
+    frames$ymin = frames[[y_feat_name]] - 0.4
+    frames$ymax = frames[[y_feat_name]] + 0.4
+    frames$legend_label = "IRD (projected)"
+
+    p = p + ggplot2::geom_rect(
+      data = frames,
+      ggplot2::aes(
+        xmin = .data[["xmin"]],
+        xmax = .data[["xmax"]],
+        ymin = .data[["ymin"]],
+        ymax = .data[["ymax"]],
+        color = .data[["legend_label"]]
+      ),
+      fill = NA,
+      alpha = .3,
+      inherit.aes = FALSE
+    )
 
   } else {
 
@@ -219,9 +290,10 @@ make_surface_plot = function(box,
         ggplot2::aes(
           x = .data[[num_feature]],
           y = .data[["pred"]],
-          group = .data[[cat_feature]]
+          group = .data[[cat_feature]],
+          color = "IRD (projected)"
         ),
-        color = "yellow", lwd = 3
+        lwd = 3
       ) +
       ggplot2::geom_line() +
       ggplot2::geom_rug(
@@ -233,10 +305,53 @@ make_surface_plot = function(box,
       ggplot2::theme_bw() +
       ggplot2::geom_point(
         data = x_interest_with_pred,
-        ggplot2::aes(x = .data[[num_feature]], y = .data[["pred"]]),
-        colour = "black"
+        ggplot2::aes(x = .data[[num_feature]], y = .data[["pred"]], shape = "x_interest"),
+        colour = "red",
+        size = 2
+      ) +
+      ggplot2::scale_shape_manual(
+        name = NULL,
+        values = c("x_interest" = 16)
+      ) +
+      ggplot2::scale_color_manual(
+        name = NULL,
+        values = c(
+          stats::setNames(
+            grDevices::hcl.colors(length(levels(dt_grid[[cat_feature]])), "Dark 3"),
+            levels(dt_grid[[cat_feature]])
+          ),
+          "IRD (projected)" = "yellow"
+        )
       )
   }
+
+  if (uses_fill) {
+    if (surface == "prediction") {
+      p = p + ggplot2::scale_fill_gradient(
+        name = "Prediction"
+        )
+    } else if (surface == "range") {
+      p = p + ggplot2::scale_fill_manual(
+        name = "Prediction in Y'",
+        values = c("No" = "grey30", "Yes" = "lightskyblue")
+      )
+    }
+  }
+  # Add the title
+  range_label = if (is.null(desired_range)) {
+    "Y' = all predictions"
+  } else {
+    paste0("Y' = [", paste(desired_range, collapse = ", "), "]")
+  }
+
+  title_text = paste(
+    "Prediction surface over",
+    feature_names[1], "and", feature_names[2]
+  )
+
+  subtitle_text = paste("Desired range", range_label)
+
+  p = p + ggplot2::labs(title = title_text, subtitle = subtitle_text)
 
   p
 }
@@ -364,8 +479,11 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
     val_name = x_interest[[i_name]]
     type_name = predictor$data$feature.types[[i_name]]
     if (i_name %in% fixed_features) {
-      if (type_name == "categorical") return(val_name) else c(val_name, val_name)
-      return(c(val_name, val_name))
+      if (type_name == "categorical") {
+        return(val_name)
+      } else { # if age is fixed to 27
+        return(c(val_name, val_name)) # c(27, 27)
+        }
     }
     ps_sub = param_set$clone(deep = TRUE)
     ps_sub = ps_sub$subset(i_name)
@@ -385,8 +503,8 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
       dt = dt[!pred %between% desired_range,]
       dt[,"dist"] = abs(dt[[i_name]] - val_name)
       dt = dt[order(dist),]
-      lower = dt[eval(parse(text=i_name)) < val_name][1,][[(i_name)]]
-      upper = dt[eval(parse(text=i_name)) > val_name][1,][[(i_name)]]
+      lower = dt[dt[[i_name]] < val_name][1,][[(i_name)]]
+      upper = dt[dt[[i_name]] > val_name][1,][[(i_name)]]
       return (c(lower, upper))
     }
   })
@@ -425,8 +543,8 @@ sampling = function(predictor, x_interest, fixed_features, desired_range, param_
     predictor = predictor, param_set = param_set, desired_range = desired_range)
 
   if (strategy == "traindata") {
-    sampdata = copy(predictor$data$get.x())
-    if (!is.null(fixed_features) & strategy == "traindata")  {
+    sampdata = data.table::copy(predictor$data$get.x())
+    if (!is.null(fixed_features))  {
       sampdata = sampdata[, (fixed_features) :=
           x_interest[, fixed_features, with = FALSE]]
     }
@@ -435,13 +553,7 @@ sampling = function(predictor, x_interest, fixed_features, desired_range, param_
   } else if (strategy == "sampled") {
 
     sampdata = SamplerUnif$new(largest_box)$sample(n = num_sampled_points)$data
-
-    factor_cols = names(which(sapply(predictor$data$X, is.factor)))
-    for (factor_col in factor_cols) {
-      fact_col_pred = predictor$data$X[[factor_col]]
-      value =  factor(sampdata[[factor_col]], levels = levels(fact_col_pred), ordered = is.ordered(fact_col_pred))
-      set(sampdata, j = factor_col, value = value)
-    }
+    sampdata = largest_box$extra_trafo(x = sampdata, predictor = predictor)
   }
   return(sampdata)
 }
