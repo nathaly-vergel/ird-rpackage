@@ -61,9 +61,6 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     #' @param box_init (`ParamSet` | `NULL`) \cr Initial box to process. Ignored if method is not `PostProcessing`.
     #
     find_box = function(x_interest, desired_range = NULL, obsdata = NULL, fixed_features = NULL, desired_class = NULL, box_largest = NULL, box_init = NULL) {
-      if (!is.null(fixed_features)) {
-        assert_names(fixed_features, subset.of = private$predictor$data$feature.names)
-      }
 
       # Checks x_interest
       assert_data_frame(x_interest, nrows = 1L)
@@ -127,7 +124,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
       }
 
 
-      # Check fixed_features
+      # Check fixed_features (here)
       if (!is.null(fixed_features)) {
         assert_names(fixed_features, subset.of = private$predictor$data$feature.names)
       }
