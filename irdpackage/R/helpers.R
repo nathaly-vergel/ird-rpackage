@@ -516,18 +516,19 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
 
 identify_in_box = function(box, data) {
   ids = box$ids()  # feature names
-  data = data.table::setDT(data)
-  data = data[, ids, with = FALSE]
-  check_inbox = function(col, param_id) {
-    dom = box$get_domain(param_id)  # domain used to identify data type
-    if (paradox::domain_is_number(dom)) {
-      col >= box$lower[[param_id]] & col <= box$upper[[param_id]]
-    } else if (paradox::domain_is_categ(dom)) {
-      col %in% box$levels[[param_id]]
+  data = data.table::setDT(data)[, ids, with = FALSE]
+  cls = box$class[ids]
+  checks = lapply(ids, function(j) {
+    if (cls[[j]] %in% c("ParamInt", "ParamDbl")) {
+      data[[j]] >= box$lower[[j]] & data[[j]] <= box$upper[[j]]
+    } else if (cls[[j]] == "ParamFct") {
+      data[[j]] %in% box$levels[[j]]
+    } else {
+      stop(sprintf("Unsupported parameter class for '%s': %s", j, cls[[j]]))
     }
-  }
-  datainbox = data[, Map(check_inbox, .SD, names(.SD)), .SDcols = ids]
-  apply(datainbox, 1, all)
+  })
+
+  Reduce(`&`, checks)
 }
 
 # surpress messages

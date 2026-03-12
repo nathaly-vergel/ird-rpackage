@@ -35,6 +35,8 @@ One difference appears in the post-processing step for integer-valued features. 
 
 This adjustment to the post-processing logic was reviewed and approved by Prof. Giuseppe.
 
+Note: rebuilding ParamSet objects rather than mutating them in place was necessary for the migration to paradox = 1.0.1. Routines that update boxes frequently (like PRIM and PostProcessing) now have more overhead as a result.
+
 #### Dependencies (current CRAN versions)
 
 * `mlr3` = 1.5.0
