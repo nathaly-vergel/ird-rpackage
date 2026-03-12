@@ -9,14 +9,13 @@ RegDesc = R6::R6Class("RegDesc",
     #'   The object (created with `iml::Predictor$new()`) holding the machine learning model and the data.
     #' @param desired_range (`numeric(2)`) \cr
     #'   Desired predicted outcome interval associated with the descriptor.
-    #'   This must be a length-2 numeric vector already resolved by the calling
-    #'   `$find_box()` method.
+    #'   This must be a length-2 numeric vector already resolved by the calling `$find_box()` method.
     #'   This outcome interval needs to include the predicted value of `x_interest`.
     #' @param fixed_features (`character()` | NULL)
     #'   Names of features that are kept fixed (immutable) when constructing the descriptor.
     #' @param desired_class (`character(1)` | NULL)
     #'   Desired class for classification models. NULL for regression.
-    #' @param method (`character(1)` | NULL)
+    #' @param method (`character(1)`)
     #'   Name of the method used to generate the regional descriptor.
     initialize = function(box,
                           predictor,
@@ -35,7 +34,7 @@ RegDesc = R6::R6Class("RegDesc",
       if (!is.null(fixed_features)) {
         assert_names(fixed_features, subset.of = predictor$data$features.names)
       }
-      assert_character(method)
+      assert_character(method, len = 1L)
       assert_names(box$ids(), permutation.of = predictor$data$feature.names)
 
       # assign
