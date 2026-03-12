@@ -217,8 +217,8 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
     },
     evaluate_box = function(box, desired_range, x_interest) {
       private$.calls_fhat = private$.calls_fhat + private$evaluation_n
-      evaluate_box(box, predictor = private$predictor, x_interest = x_interest,
-        n_samples = private$evaluation_n, desired_range)
+      evaluate_box(box = box, predictor = private$predictor, x_interest = x_interest,
+        n_samples = private$evaluation_n, desired_range = desired_range)
     },
     peeling_subbox = function(box_new) {
       a = lapply(sample(names(private$searchspace)), FUN = function(j) { #<FIXME:> mclapply
