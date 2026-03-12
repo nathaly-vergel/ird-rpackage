@@ -32,7 +32,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       checkmate::qassert(subbox_relsize, "N?(0,1]")
       checkmate::assert_integerish(evaluation_n, lower = 0)
       checkmate::assert_numeric(paste_alpha, len = 1L)
-      checkmate::assert_names(strategy_ties, subset.of = c("preddist", "random"))
+      checkmate::assert_choice(strategy_ties, choices = c("preddist", "random"))
       # assign private attr
       private$subbox_relsize = subbox_relsize
       private$evaluation_n = evaluation_n
