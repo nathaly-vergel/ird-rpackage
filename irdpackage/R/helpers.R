@@ -557,3 +557,15 @@ sampling = function(predictor, x_interest, fixed_features, desired_range, param_
   }
   return(sampdata)
 }
+
+box_contains_x_interest = function(box, x_interest) {
+  ids = box$ids()
+  all(mapply(function(j, cls) {
+    value = x_interest[[j]]
+    switch(cls,
+           "ParamDbl" = box$lower[[j]] <= value && value <= box$upper[[j]],
+           "ParamInt" = box$lower[[j]] <= value && value <= box$upper[[j]],
+           "ParamFct" = value %in% box$levels[[j]]
+    )
+  }, ids, box$class[ids]))
+}
