@@ -7,9 +7,11 @@ RegDesc = R6::R6Class("RegDesc",
     #'   A single row with the observation of interest.
     #' @param predictor (\link[iml]{Predictor})\cr
     #'   The object (created with `iml::Predictor$new()`) holding the machine learning model and the data.
-    #' @param desired_range (NULL | `numeric(2)`) \cr
-    #' The desired predicted outcome. If NULL (default), the current predicted value of `predictor` for `x_interest` is used as desired prediction.
-    #' Alternatively, a vector with two numeric values that specify an outcome interval. This outcome interval needs to include the predicted value of `x_interest`.
+    #' @param desired_range (`numeric(2)`) \cr
+    #'   Desired predicted outcome interval associated with the descriptor.
+    #'   This must be a length-2 numeric vector already resolved by the calling
+    #'   `$find_box()` method.
+    #'   This outcome interval needs to include the predicted value of `x_interest`.
     #' @param fixed_features (`character()` | NULL)
     #'   Names of features that are kept fixed (immutable) when constructing the descriptor.
     #' @param desired_class (`character(1)` | NULL)
