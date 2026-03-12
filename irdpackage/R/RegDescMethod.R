@@ -83,7 +83,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
         assert_set_equal(box_init$ids(), private$predictor$data$feature.names)
         # <FIXME:> Take update fixed_features into account!
 
-        if (!box_contains_x_interest(box_init, x_interest)) {
+        if (!all(identify_in_box(box_init, x_interest))) {
           stop("`box_init` must contain `x_interest`.", call. = FALSE)
         }
       }
