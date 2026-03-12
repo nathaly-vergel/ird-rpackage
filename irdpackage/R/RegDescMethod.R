@@ -82,6 +82,10 @@ RegDescMethod = R6::R6Class("RegDescMethod",
       if (!is.null(box_init)) {
         assert_set_equal(box_init$ids(), private$predictor$data$feature.names)
         # <FIXME:> Take update fixed_features into account!
+
+        if (!all(identify_in_box(box_init, x_interest))) {
+          stop("`box_init` must contain `x_interest`.", call. = FALSE)
+        }
       }
 
       # Check box_largest
@@ -101,6 +105,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
 
       # Set number of calls to fhat to 0
       private$.calls_fhat = 0
+      private$.history = NULL
 
       private$x_interest = x_interest
       private$f_hat_interest = f_hat_interest
