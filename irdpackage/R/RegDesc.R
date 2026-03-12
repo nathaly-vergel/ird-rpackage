@@ -42,6 +42,7 @@ RegDesc = R6::R6Class("RegDesc",
       private$.x_interest = x_interest
       private$.desired_range = desired_range
       private$.desired_class = desired_class
+      private$.fixed_features = fixed_features
       private$.method = method
       if (predictor$task == "unknown") {
         if (is.numeric(predictor$data$y[[1]])) {
