@@ -102,7 +102,7 @@ RegDesc = R6::R6Class("RegDesc",
     #' @param surface (`character(1)`) Which surface to plot: `"prediction"` or `"range"`.
     #' @return A `ggplot2` object.
     plot_surface = function(feature_names, grid_size = 250L, surface = "prediction") {
-      assert_names(surface, subset.of = c("prediction", "range"))
+      assert_choice(surface, choices = c("prediction", "range"))
       assert_names(feature_names, subset.of = private$.box$ids())
       if (!requireNamespace("ggplot2", quietly = TRUE)) {
         stop("Package 'ggplot2' needed for this function to work. Please install it.", call. = FALSE)
