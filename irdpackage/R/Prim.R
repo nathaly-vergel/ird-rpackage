@@ -113,8 +113,8 @@ Prim = R6::R6Class("Prim", inherit = RegDescMethod,
             boxdata = copy(private$obsdata)[(inbox),]
 
             # get quantile
-            lower = round(boxdata[, lapply(.SD, quantile, prob = private$subbox_relsize),  .SDcols = j])[[1]]
-            upper = round(boxdata[, lapply(.SD, quantile, prob = 1-private$subbox_relsize),  .SDcols = j])[[1]]
+            lower = boxdata[, lapply(.SD, quantile, prob = private$subbox_relsize),  .SDcols = j][[1]]
+            upper = boxdata[, lapply(.SD, quantile, prob = 1-private$subbox_relsize),  .SDcols = j][[1]]
 
             selection = c("lower", "upper")
 
