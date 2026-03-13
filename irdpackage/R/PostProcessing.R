@@ -29,7 +29,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
                           quiet = FALSE) {
       # input checks
       super$initialize(predictor, quiet)
-      checkmate::qassert(subbox_relsize, "N?(0,1]")
+      checkmate::qassert(subbox_relsize, "N?(0,1)")
       checkmate::assert_integerish(evaluation_n, lower = 0)
       checkmate::qassert(paste_alpha, "N?(0,1)")
       checkmate::assert_choice(strategy_ties, choices = c("preddist", "random"))

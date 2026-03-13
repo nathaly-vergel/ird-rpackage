@@ -26,9 +26,9 @@ Prim = R6::R6Class("Prim", inherit = RegDescMethod,
                           quiet = FALSE) {
       # input checks
       super$initialize(predictor, quiet)
-      checkmate::assert_numeric(subbox_relsize, lower = 0, upper = 1)
-      assert_character(strategy, len = 1L)
-      assert_names(strategy, subset.of = c("traindata", "sampled"))
+      checkmate::qassert(subbox_relsize, "N?(0,1)")
+      checkmate::assert_character(strategy, len = 1L)
+      checkmate::assert_choice(strategy, choices = c("traindata", "sampled"))
 
       # assign private attr
       private$subbox_relsize = subbox_relsize
