@@ -3,13 +3,13 @@
 \name{RegDesc}
 \alias{RegDesc}
 \title{Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of \link{Prim}.}
+This method should only be called by the `$find_box` methods of regional descriptor algorithms, such as \link{Prim}, \link{MaxBox}, \link{Maire} or \link{PostProcessing}.}
 \description{
 Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of \link{Prim}.
+This method should only be called by the `$find_box` methods of regional descriptor algorithms, such as \link{Prim}, \link{MaxBox}, \link{Maire} or \link{PostProcessing}.
 
 Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of \link{Prim}.
+This method should only be called by the `$find_box` methods of regional descriptor algorithms, such as \link{Prim}, \link{MaxBox}, \link{Maire} or \link{PostProcessing}.
 }
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
@@ -18,10 +18,10 @@ This method should only be called by the `$find_box` methods of \link{Prim}.
 Desired prediction range associated with the regional descriptor.
 Read-only! Represents the interval used to define precision.}
 
-\item{\code{box}}{(`data.table`)\cr
+\item{\code{box}}{(`ParamSet`)\cr
 The regional descriptor for `x_interest`.}
 
-\item{\code{box_single}}{(`data.table`)\cr
+\item{\code{box_single}}{(`ParamSet`)\cr
 The regional descriptors only mutating a single feature for `x_interest`.}
 
 \item{\code{x_interest}}{(`data.table(1)`) \cr
@@ -78,9 +78,10 @@ The object (created with `iml::Predictor$new()`) holding the machine learning mo
 \item{\code{x_interest}}{(`data.table(1)` | `data.frame(1)`) \cr
 A single row with the observation of interest.}
 
-\item{\code{desired_range}}{(NULL | `numeric(2)`) \cr
-The desired predicted outcome. If NULL (default), the current predicted value of `predictor` for `x_interest` is used as desired prediction.
-Alternatively, a vector with two numeric values that specify an outcome interval. This outcome interval needs to include the predicted value of `x_interest`.}
+\item{\code{desired_range}}{(`numeric(2)`) \cr
+Desired predicted outcome interval associated with the descriptor.
+This must be a length-2 numeric vector already resolved by the calling `$find_box()` method.
+This outcome interval needs to include the predicted value of `x_interest`.}
 
 \item{\code{fixed_features}}{(`character()` | NULL)
 Names of features that are kept fixed (immutable) when constructing the descriptor.}
@@ -88,7 +89,7 @@ Names of features that are kept fixed (immutable) when constructing the descript
 \item{\code{desired_class}}{(`character(1)` | NULL)
 Desired class for classification models. NULL for regression.}
 
-\item{\code{method}}{(`character(1)` | NULL)
+\item{\code{method}}{(`character(1)`)
 Name of the method used to generate the regional descriptor.}
 }
 \if{html}{\out{</div>}}

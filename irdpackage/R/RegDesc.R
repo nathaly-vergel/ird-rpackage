@@ -1,20 +1,21 @@
 RegDesc = R6::R6Class("RegDesc",
   public = list(
     #' Creates a new Regional Descriptor (`RegDesc`) object.
-    #' This method should only be called by the `$find_box` methods of \link{Prim}.
+    #' This method should only be called by the `$find_box` methods of regional descriptor algorithms, such as \link{Prim}, \link{MaxBox}, \link{Maire} or \link{PostProcessing}.
     #' @param box (`ParamSet`)
     #' @param x_interest (`data.table(1)` | `data.frame(1)`) \cr
     #'   A single row with the observation of interest.
     #' @param predictor (\link[iml]{Predictor})\cr
     #'   The object (created with `iml::Predictor$new()`) holding the machine learning model and the data.
-    #' @param desired_range (NULL | `numeric(2)`) \cr
-    #' The desired predicted outcome. If NULL (default), the current predicted value of `predictor` for `x_interest` is used as desired prediction.
-    #' Alternatively, a vector with two numeric values that specify an outcome interval. This outcome interval needs to include the predicted value of `x_interest`.
+    #' @param desired_range (`numeric(2)`) \cr
+    #'   Desired predicted outcome interval associated with the descriptor.
+    #'   This must be a length-2 numeric vector already resolved by the calling `$find_box()` method.
+    #'   This outcome interval needs to include the predicted value of `x_interest`.
     #' @param fixed_features (`character()` | NULL)
     #'   Names of features that are kept fixed (immutable) when constructing the descriptor.
     #' @param desired_class (`character(1)` | NULL)
     #'   Desired class for classification models. NULL for regression.
-    #' @param method (`character(1)` | NULL)
+    #' @param method (`character(1)`)
     #'   Name of the method used to generate the regional descriptor.
     initialize = function(box,
                           predictor,
@@ -31,9 +32,9 @@ RegDesc = R6::R6Class("RegDesc",
       assert_numeric(desired_range, len = 2L)
       assert_character(desired_class, null.ok = TRUE)
       if (!is.null(fixed_features)) {
-        assert_names(fixed_features, subset.of = predictor$data$features.names)
+        assert_names(fixed_features, subset.of = predictor$data$feature.names)
       }
-      assert_character(method)
+      assert_character(method, len = 1L)
       assert_names(box$ids(), permutation.of = predictor$data$feature.names)
 
       # assign
@@ -42,6 +43,7 @@ RegDesc = R6::R6Class("RegDesc",
       private$.x_interest = x_interest
       private$.desired_range = desired_range
       private$.desired_class = desired_class
+      private$.fixed_features = fixed_features
       private$.method = method
       if (predictor$task == "unknown") {
         if (is.numeric(predictor$data$y[[1]])) {
@@ -62,7 +64,7 @@ RegDesc = R6::R6Class("RegDesc",
     #' @param digits (`integer(1)`) Number of decimal places used when printing numeric box boundaries.
     print = function(digits = 2L) {
       desired = private$.desired_range
-      cat(nrow(private$.data), "Regional Descriptors \n \n")
+      cat("Regional Descriptors \n \n")
       if (private$predictor$task == "classification") {
         cat("Desired class:", private$predictor$class, "\n")
       }
@@ -100,7 +102,7 @@ RegDesc = R6::R6Class("RegDesc",
     #' @param surface (`character(1)`) Which surface to plot: `"prediction"` or `"range"`.
     #' @return A `ggplot2` object.
     plot_surface = function(feature_names, grid_size = 250L, surface = "prediction") {
-      assert_names(surface, subset.of = c("prediction", "range"))
+      assert_choice(surface, choices = c("prediction", "range"))
       assert_names(feature_names, subset.of = private$.box$ids())
       if (!requireNamespace("ggplot2", quietly = TRUE)) {
         stop("Package 'ggplot2' needed for this function to work. Please install it.", call. = FALSE)
@@ -148,7 +150,7 @@ RegDesc = R6::R6Class("RegDesc",
         stop("`$desired_range` is read only", call. = FALSE)
       }
     },
-    #' @field box (`data.table`)\cr
+    #' @field box (`ParamSet`)\cr
     #'  The regional descriptor for `x_interest`.
     box = function(value) {
       if (missing(value)) {
@@ -157,13 +159,13 @@ RegDesc = R6::R6Class("RegDesc",
         stop("`$box` is read only", call. = FALSE)
       }
     },
-    #' @field box_single (`data.table`)\cr
+    #' @field box_single (`ParamSet`)\cr
     #'  The regional descriptors only mutating a single feature for `x_interest`.
     box_single = function(value) {
       if (missing(value)) {
         private$.box_single
       } else {
-        stop("`$box` is read only", call. = FALSE)
+        stop("`$box_single` is read only", call. = FALSE)
       }
     },
     #' @field x_interest (`data.table(1)`) \cr
