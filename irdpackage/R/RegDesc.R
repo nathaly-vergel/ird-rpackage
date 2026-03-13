@@ -165,7 +165,7 @@ RegDesc = R6::R6Class("RegDesc",
       if (missing(value)) {
         private$.box_single
       } else {
-        stop("`$box` is read only", call. = FALSE)
+        stop("`$box_single` is read only", call. = FALSE)
       }
     },
     #' @field x_interest (`data.table(1)`) \cr
