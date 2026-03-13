@@ -150,7 +150,7 @@ RegDesc = R6::R6Class("RegDesc",
         stop("`$desired_range` is read only", call. = FALSE)
       }
     },
-    #' @field box (`data.table`)\cr
+    #' @field box (`ParamSet`)\cr
     #'  The regional descriptor for `x_interest`.
     box = function(value) {
       if (missing(value)) {
@@ -159,7 +159,7 @@ RegDesc = R6::R6Class("RegDesc",
         stop("`$box` is read only", call. = FALSE)
       }
     },
-    #' @field box_single (`data.table`)\cr
+    #' @field box_single (`ParamSet`)\cr
     #'  The regional descriptors only mutating a single feature for `x_interest`.
     box_single = function(value) {
       if (missing(value)) {
