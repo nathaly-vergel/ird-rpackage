@@ -3,13 +3,13 @@
 \name{RegDesc}
 \alias{RegDesc}
 \title{Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of \link{Prim}.}
+This method should only be called by the `$find_box` methods of regional descriptor algorithms, such as \link{Prim}, \link{MaxBox}, \link{Maire} or \link{PostProcessing}.}
 \description{
 Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of \link{Prim}.
+This method should only be called by the `$find_box` methods of regional descriptor algorithms, such as \link{Prim}, \link{MaxBox}, \link{Maire} or \link{PostProcessing}.
 
 Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of \link{Prim}.
+This method should only be called by the `$find_box` methods of regional descriptor algorithms, such as \link{Prim}, \link{MaxBox}, \link{Maire} or \link{PostProcessing}.
 }
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
@@ -18,10 +18,10 @@ This method should only be called by the `$find_box` methods of \link{Prim}.
 Desired prediction range associated with the regional descriptor.
 Read-only! Represents the interval used to define precision.}
 
-\item{\code{box}}{(`data.table`)\cr
+\item{\code{box}}{(`ParamSet`)\cr
 The regional descriptor for `x_interest`.}
 
-\item{\code{box_single}}{(`data.table`)\cr
+\item{\code{box_single}}{(`ParamSet`)\cr
 The regional descriptors only mutating a single feature for `x_interest`.}
 
 \item{\code{x_interest}}{(`data.table(1)`) \cr
