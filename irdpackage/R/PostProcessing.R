@@ -228,7 +228,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       candidates = private$drop_empty_pasting_candidates(candidates)
       return(candidates)
     },
-    drop_empty_pasting_candidates = function(candidates, var = NULL) {
+    drop_empty_pasting_candidates = function(candidates) {
       # What for? keep only variables and bounds that still produce valid candidate boxes
 
       # drop empty bounds or categories
