@@ -412,16 +412,6 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       if (best$impurity > 0) {
         private$alpha = private$alpha*1/2
       } else {
-        # make boxes larger with respect to one direction
-        if (!is.na(best$upper) && private$alpha == 1) {
-          private$searchspace[[best$var]]$upper = private$searchspace[[best$var]]$upper[-1]
-        } else if (!is.na(best$lower) && private$alpha == 1) {
-          private$searchspace[[best$var]]$lower = private$searchspace[[best$var]]$lower[-1]
-        } else if (!is.na(best$val)) {
-          private$searchspace[[best$var]]$val = setdiff(private$searchspace[[best$var]]$val, best$val)
-        }
-        ## Declutter searchspace
-        private$searchspace = private$declutter_searchspace(best$var)
         box_new = update_box(current_box = box_new, j = best$var, lower = best[["lower"]],
           upper = best[["upper"]], val = best[["val"]], complement = TRUE)
         ## Save info in history
