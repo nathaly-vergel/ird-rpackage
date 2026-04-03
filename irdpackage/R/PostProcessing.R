@@ -49,7 +49,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
     paste_alpha = NULL,
     strategy_ties = NULL,
     box_largest = NULL,
-    searchspace = NULL,
+    pasting_candidates = NULL,
     run = function(){
       private$i = 0L
 
@@ -149,36 +149,28 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         }
       }
 
-      private$searchspace = list()
-      for (j in vars_diff) {
-        ps = private$box_largest$clone()$subset(j)
-        if (ps$all_numeric) {
-          if (box_new$lower[[j]] > ps$lower[[1]]) {
-            xvecl = unique(c(seq(box_new$lower[[j]], ps$lower[[1]], by = -private$lookup_sizes[[j]][[1]])[-1], ps$lower[[1]]))
-          } else {
-            xvecl = numeric()
-            box_new = update_box(box_new, j = j, lower = ps$lower[[1]])
-          }
-          if (box_new$upper[[j]] < ps$upper[[1]]) {
-            xvecu = unique(c(seq(box_new$upper[[j]], ps$upper[[1]], by = private$lookup_sizes[[j]])[-1], ps$upper[[1]]))
-          } else {
-            xvecu = numeric()
-            box_new = update_box(box_new, j = j, upper = ps$upper[[1]])
-          }
-          private$searchspace = c(private$searchspace, list(list(lower = xvecl, upper = xvecu)))
-        } else if (ps$all_categorical) {
-          private$searchspace = c(private$searchspace, list(list(val = setdiff(ps$levels[[j]], box_new$levels[[j]]))))
-        }
-      }
-      names(private$searchspace) = vars_diff
-      for (vd in vars_diff) {
-        private$searchspace = private$declutter_searchspace(vd)
-      }
+      # PASTING PHASE!
+
       private$i = 0L
       temp = 0L
+      private$alpha = 1
+
       # Main algorithm for adding boxes
-      while (private$alpha > private$paste_alpha & length(private$searchspace) > 0 & temp < 300) {
+      while (private$alpha > private$paste_alpha & temp < 300) {
+        private$pasting_candidates = private$build_pasting_candidates(
+          box_new = box_new,
+          vars_diff = vars_diff
+        )
+
+        # if no candidates alive for ANY variable, stop pasting
+        if (length(private$pasting_candidates) == 0) {
+          break
+        }
+
+        # run one iteration of pasting
         box_new = private$pasting_subbox(box_new = box_new)
+
+        # if we reduced alpha (aka stepsize), then only run for 300 iter more
         if (private$alpha < 1) {
           temp = temp + 1L
         }
