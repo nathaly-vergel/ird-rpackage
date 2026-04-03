@@ -49,6 +49,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
     paste_alpha = NULL,
     strategy_ties = NULL,
     box_largest = NULL,
+    searchspace = NULL,
     pasting_candidates = NULL,
     run = function(){
       private$i = 0L
