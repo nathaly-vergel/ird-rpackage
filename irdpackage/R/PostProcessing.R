@@ -185,6 +185,69 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       }
       return(box_new)
     },
+    build_pasting_candidates = function(box_new, vars_diff) {
+      candidates = list()
+
+      for (j in vars_diff) {
+        ps = private$box_largest$subset(j)
+
+        # Check if domain is numeric
+        if (ps$all_numeric) {
+          current_lower = box_new$lower[[j]]
+          current_upper = box_new$upper[[j]]
+
+          # theoretical bound (B is always contained in box_largest)
+          min_lower = private$box_largest$lower[[j]]
+          max_upper = private$box_largest$upper[[j]]
+
+          s_j = private$lookup_sizes[[j]][[1]]
+
+          if (box_new$class[[j]] == "ParamInt") {
+            raw_delta = private$alpha * s_j
+
+            if (raw_delta < 1) { # 1 is granularity of integers
+              candidates[[j]] = list(lower = NULL, upper = NULL)
+              next
+            }
+
+            delta = round(raw_delta) # make sure step is integer!
+
+          } else if (box_new$class[[j]] == "ParamDbl") {
+            delta = private$alpha * s_j
+          }
+
+          # same as pseudo code, but clipping to box_largest
+          proposed_lower = max(current_lower - delta, min_lower)
+          proposed_upper = min(current_upper + delta, max_upper)
+
+          # check that we really expanded
+          lower_candidate = if (proposed_lower < current_lower) proposed_lower else NULL
+          upper_candidate = if (proposed_upper > current_upper) proposed_upper else NULL
+
+          candidates[[j]] = list(lower = lower_candidate, upper = upper_candidate)
+
+        } else if (ps$all_categorical) {
+          candidates[[j]] = list(val = setdiff(ps$levels[[j]], box_new$levels[[j]]))
+        }
+      }
+
+      # drop bounds or categories or whole variables that are empty
+      candidates = private$drop_empty_pasting_candidates(candidates)
+      return(candidates)
+    },
+    drop_empty_pasting_candidates = function(candidates, var = NULL) {
+      # What for? keep only variables and bounds that still produce valid candidate boxes
+
+      # drop empty bounds or categories
+      candidates = lapply(candidates, function(x) {
+        x[!vapply(x, function(y) is.null(y) || length(y) == 0, logical(1))]
+      })
+
+      # drop completely empty domains (params with no remaining bounds or categories)
+      candidates = candidates[!vapply(candidates, function(x) length(x) == 0, logical(1))]
+
+      return(candidates)
+    },
     create_subbox = function(current_box, j, lower = NULL, upper = NULL, val = NULL) {
 
       # if j is numeric (index), map it to a feature name
