@@ -347,13 +347,13 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       return(box_new)
     },
     pasting_subbox = function(box_new) {
-      a = lapply(sample(names(private$searchspace)), FUN = function(j) {
+      a = lapply(sample(names(private$pasting_candidates)), FUN = function(j) {
         res = data.table(var = character(), lower = numeric(), upper = numeric(),
           val = character(), impurity = numeric(), dist = numeric(), size = numeric())
         # identify boxes and evaluate them
         if (box_new$is_categ[[j]]) {
           res = data.table()
-          for (cat in private$searchspace[[j]]$val) {
+          for (cat in private$pasting_candidates[[j]]$val) {
             box = private$create_subbox(current_box = box_new, j = j, lower = NULL, upper = NULL, val = cat)
             eval = private$evaluate_box(box = box, desired_range = private$desired_range,
               x_interest = private$x_interest)
@@ -362,27 +362,8 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
             res = rbind(res, resrow)
           }
         } else {
-          for (l in names(private$searchspace[[j]])) {
-            bound = private$alpha*(private$searchspace[[j]][[l]][1])+(1-private$alpha)*box_new[[l]][[j]]
-
-            # Add modification for integers
-            if (box_new$class[[j]] == "ParamInt") {
-              if (l == "lower") {
-                bound = floor(bound)
-              } else {
-                bound = ceiling(bound)
-              }
-            }
-
-            # Skip this candidate bound if doesn't change the box
-            if ((l == "lower" && identical(bound, box_new$lower[[j]])) ||
-                (l == "upper" && identical(bound, box_new$upper[[j]]))) {
-              # if candidate bound = current bound, then with any alpha we will
-              # get the same candidate -> best to remove it
-              private$searchspace[[j]][[l]] = private$searchspace[[j]][[l]][-1]
-              private$searchspace = private$declutter_searchspace(j)
-              next
-            }
+          for (l in names(private$pasting_candidates[[j]])) {
+            bound = private$pasting_candidates[[j]][[l]]
 
             # Create candidate box
             if (l == "lower") {
