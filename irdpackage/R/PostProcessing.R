@@ -389,17 +389,6 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         return(box_new)
       }
 
-      # remove the categories with impurity > 0
-      # <FIXME:> change this to allow for slight impurity
-      remove = res_table[!is.na(val) & impurity > 0, ]
-      if (nrow(remove) > 0) {
-        for (i in seq_len(nrow(remove))) {
-          private$searchspace[[remove[i, var]]]$val = setdiff(private$searchspace[[remove[i, var]]]$val, remove[i, val])
-          if (length(private$searchspace[[remove[i, var]]]$val) == 0) {
-            private$searchspace[[remove[i, var]]] = NULL
-          }
-        }
-      }
       # identify best (full purity + lowest distance to pred_x_interest)
       # only impure --> smaller boxes
       if (private$strategy_ties == "random") {
