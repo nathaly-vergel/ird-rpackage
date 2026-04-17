@@ -427,9 +427,6 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         }
       }
 
-      cat("\nres_table:\n")
-      print(res_table)
-
       # identify best (full purity + lowest distance to pred_x_interest)
       # only impure --> smaller boxes
       if (private$strategy_ties == "random") {
