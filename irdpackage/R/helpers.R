@@ -40,7 +40,7 @@ make_param_set = function(dt, subset = NULL) {
   return(ps)
 }
 
-update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, complement = TRUE) {
+update_box_old_correct = function(current_box, j, lower = NULL, upper = NULL, val = NULL, complement = TRUE) {
   # normalize j to an id -> now feature name (zB j = "age")
   ids = current_box$ids()
   if (is.numeric(j)) {
@@ -96,6 +96,60 @@ update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, co
   new_box$extra_trafo = current_box$extra_trafo
 
   return(new_box)
+}
+
+update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, complement = TRUE) {
+  ids = current_box$ids()
+  if (is.numeric(j)) {
+    j = ids[[as.integer(j)]]
+  }
+
+  box = current_box$clone(deep = TRUE)
+
+  # force an actual copy of the internal params table
+  box$.__enclos_env__$private$.params = data.table::copy(
+    box$.__enclos_env__$private$.params
+  )
+
+  cls = box$class[[j]]
+
+  params_dt = box$.__enclos_env__$private$.params
+  i = which(params_dt$id == j)
+
+  if (cls %in% c("ParamInt", "ParamDbl")) {
+
+    lb = if (!is.null(lower) && !is.na(lower)) lower else current_box$lower[[j]]
+    ub = if (!is.null(upper) && !is.na(upper)) upper else current_box$upper[[j]]
+
+    if (cls == "ParamInt") {
+      if (lb != round(lb) || ub != round(ub)) {
+        stop(sprintf(
+          "Invalid bounds for integer parameter '%s': lower = %s, upper = %s. Both must be integers.",
+          j, lb, ub
+        ))
+      }
+    }
+
+    if (lb > ub) {
+      stop(sprintf(
+        "Invalid bounds for parameter '%s': lower (%s) must be <= upper (%s).",
+        j, lb, ub
+      ))
+    }
+
+    data.table::set(params_dt, i = i, j = "lower", value = lb)
+    data.table::set(params_dt, i = i, j = "upper", value = ub)
+  }
+
+  if (cls == "ParamFct") {
+    if (all(!is.null(val)) && all(!is.na(val))) {
+      lev = val
+      if (complement) lev = unique(c(current_box$levels[[j]], val))
+      data.table::set(params_dt, i = i, j = "levels", value = list(lev))
+    }
+  }
+
+  return(box)
 }
 
 evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, strategy = "random") {
