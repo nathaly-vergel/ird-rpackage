@@ -51,6 +51,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
     box_largest = NULL,
     searchspace = NULL,
     pasting_candidates = NULL,
+    pasting_categ_candidates = NULL,
     run = function(){
       private$i = 0L
 
@@ -156,6 +157,19 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       temp = 0L
       private$alpha = 1
 
+      # persistent candidate categories for pasting:
+      # once a category is shown to be impure, do not evaluate it again
+      private$pasting_categ_candidates = list()
+
+      for (j in vars_diff) {
+        ps = private$box_largest$subset(j)
+
+        if (ps$all_categorical) {
+          private$pasting_categ_candidates[[j]] =
+            setdiff(ps$levels[[j]], box_new$levels[[j]])
+        }
+      }
+
       # Main algorithm for adding boxes
       while (private$alpha > private$paste_alpha & temp < 300) {
         private$pasting_candidates = private$build_pasting_candidates(
@@ -220,7 +234,12 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
           candidates[[j]] = list(lower = lower_candidate, upper = upper_candidate)
 
         } else if (ps$all_categorical) {
-          candidates[[j]] = list(val = setdiff(ps$levels[[j]], box_new$levels[[j]]))
+          vals = private$pasting_categ_candidates[[j]]
+
+          # just to be sure: remove values that may already be in the current box
+          vals = setdiff(vals, box_new$levels[[j]])
+
+          candidates[[j]] = list(val = vals)
         }
       }
 
@@ -390,6 +409,27 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         return(box_new)
       }
 
+      # Remove impure categories from the list of candidates
+      remove = res_table[!is.na(val) & impurity > 0, ] # filter impure categories
+      if (nrow(remove) > 0) {
+        for (i in seq_len(nrow(remove))) {
+          var_i = remove[i, var] # variable's name
+          val_i = remove[i, val] # impure category
+
+          # remove impure category from candidate list
+          private$pasting_categ_candidates[[var_i]] =
+            setdiff(private$pasting_categ_candidates[[var_i]], val_i)
+
+          # drop ("clean") variable if there are no categories
+          if (length(private$pasting_categ_candidates[[var_i]]) == 0) {
+            private$pasting_categ_candidates[[var_i]] = NULL
+          }
+        }
+      }
+
+      cat("\nres_table:\n")
+      print(res_table)
+
       # identify best (full purity + lowest distance to pred_x_interest)
       # only impure --> smaller boxes
       if (private$strategy_ties == "random") {
@@ -402,6 +442,16 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       if (best$impurity > 0) {
         private$alpha = private$alpha*1/2
       } else {
+
+        if (!is.na(best[["val"]])) {
+          private$pasting_categ_candidates[[best$var]] =
+            setdiff(private$pasting_categ_candidates[[best$var]], best[["val"]])
+
+          if (length(private$pasting_categ_candidates[[best$var]]) == 0) {
+            private$pasting_categ_candidates[[best$var]] = NULL
+          }
+        }
+
         box_new = update_box(current_box = box_new, j = best$var, lower = best[["lower"]],
           upper = best[["upper"]], val = best[["val"]], complement = TRUE)
         ## Save info in history
