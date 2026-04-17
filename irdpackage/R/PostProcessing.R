@@ -50,6 +50,8 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
     strategy_ties = NULL,
     box_largest = NULL,
     searchspace = NULL,
+    pasting_candidates = NULL,
+    pasting_categ_candidates = NULL,
     run = function(){
       private$i = 0L
 
@@ -149,41 +151,114 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         }
       }
 
-      private$searchspace = list()
-      for (j in vars_diff) {
-        ps = private$box_largest$clone()$subset(j)
-        if (ps$all_numeric) {
-          if (box_new$lower[[j]] > ps$lower[[1]]) {
-            xvecl = unique(c(seq(box_new$lower[[j]], ps$lower[[1]], by = -private$lookup_sizes[[j]][[1]])[-1], ps$lower[[1]]))
-          } else {
-            xvecl = numeric()
-            box_new = update_box(box_new, j = j, lower = ps$lower[[1]])
-          }
-          if (box_new$upper[[j]] < ps$upper[[1]]) {
-            xvecu = unique(c(seq(box_new$upper[[j]], ps$upper[[1]], by = private$lookup_sizes[[j]])[-1], ps$upper[[1]]))
-          } else {
-            xvecu = numeric()
-            box_new = update_box(box_new, j = j, upper = ps$upper[[1]])
-          }
-          private$searchspace = c(private$searchspace, list(list(lower = xvecl, upper = xvecu)))
-        } else if (ps$all_categorical) {
-          private$searchspace = c(private$searchspace, list(list(val = setdiff(ps$levels[[j]], box_new$levels[[j]]))))
-        }
-      }
-      names(private$searchspace) = vars_diff
-      for (vd in vars_diff) {
-        private$searchspace = private$declutter_searchspace(vd)
-      }
+      # PASTING PHASE!
+
       private$i = 0L
       temp = 0L
+      private$alpha = 1
+
+      # persistent candidate categories for pasting:
+      # once a category is shown to be impure, do not evaluate it again
+      private$pasting_categ_candidates = list()
+
+      for (j in vars_diff) {
+        ps = private$box_largest$subset(j)
+
+        if (ps$all_categorical) {
+          private$pasting_categ_candidates[[j]] =
+            setdiff(ps$levels[[j]], box_new$levels[[j]])
+        }
+      }
+
       # Main algorithm for adding boxes
-      while (private$alpha > private$paste_alpha & length(private$searchspace) > 0 & temp < 300) {
+      while (private$alpha > private$paste_alpha & temp < 300) {
+        private$pasting_candidates = private$build_pasting_candidates(
+          box_new = box_new,
+          vars_diff = vars_diff
+        )
+
+        # if no candidates alive for ANY variable, stop pasting
+        if (length(private$pasting_candidates) == 0) {
+          break
+        }
+
+        # run one iteration of pasting
         box_new = private$pasting_subbox(box_new = box_new)
+
+        # if we reduced alpha (aka stepsize), then only run for 300 iter more
         if (private$alpha < 1) {
           temp = temp + 1L
         }
       }
       return(box_new)
+    },
+    build_pasting_candidates = function(box_new, vars_diff) {
+      candidates = list()
+
+      for (j in vars_diff) {
+        ps = private$box_largest$subset(j)
+
+        # Check if domain is numeric
+        if (ps$all_numeric) {
+          current_lower = box_new$lower[[j]]
+          current_upper = box_new$upper[[j]]
+
+          # theoretical bound (B is always contained in box_largest)
+          min_lower = private$box_largest$lower[[j]]
+          max_upper = private$box_largest$upper[[j]]
+
+          s_j = private$lookup_sizes[[j]][[1]]
+
+          if (box_new$class[[j]] == "ParamInt") {
+            raw_delta = private$alpha * s_j
+
+            if (raw_delta < 1) { # 1 is granularity of integers
+              candidates[[j]] = list(lower = NULL, upper = NULL)
+              next
+            }
+
+            delta = round(raw_delta) # make sure step is integer!
+
+          } else if (box_new$class[[j]] == "ParamDbl") {
+            delta = private$alpha * s_j
+          }
+
+          # same as pseudo code, but clipping to box_largest
+          proposed_lower = max(current_lower - delta, min_lower)
+          proposed_upper = min(current_upper + delta, max_upper)
+
+          # check that we really expanded
+          lower_candidate = if (proposed_lower < current_lower) proposed_lower else NULL
+          upper_candidate = if (proposed_upper > current_upper) proposed_upper else NULL
+
+          candidates[[j]] = list(lower = lower_candidate, upper = upper_candidate)
+
+        } else if (ps$all_categorical) {
+          vals = private$pasting_categ_candidates[[j]]
+
+          # just to be sure: remove values that may already be in the current box
+          vals = setdiff(vals, box_new$levels[[j]])
+
+          candidates[[j]] = list(val = vals)
+        }
+      }
+
+      # drop bounds or categories or whole variables that are empty
+      candidates = private$drop_empty_pasting_candidates(candidates)
+      return(candidates)
+    },
+    drop_empty_pasting_candidates = function(candidates) {
+      # What for? keep only variables and bounds that still produce valid candidate boxes
+
+      # drop empty bounds or categories
+      candidates = lapply(candidates, function(x) {
+        x[!vapply(x, function(y) is.null(y) || length(y) == 0, logical(1))]
+      })
+
+      # drop completely empty domains (params with no remaining bounds or categories)
+      candidates = candidates[!vapply(candidates, function(x) length(x) == 0, logical(1))]
+
+      return(candidates)
     },
     create_subbox = function(current_box, j, lower = NULL, upper = NULL, val = NULL) {
 
@@ -292,13 +367,13 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       return(box_new)
     },
     pasting_subbox = function(box_new) {
-      a = lapply(sample(names(private$searchspace)), FUN = function(j) {
+      a = lapply(sample(names(private$pasting_candidates)), FUN = function(j) {
         res = data.table(var = character(), lower = numeric(), upper = numeric(),
           val = character(), impurity = numeric(), dist = numeric(), size = numeric())
         # identify boxes and evaluate them
         if (box_new$is_categ[[j]]) {
           res = data.table()
-          for (cat in private$searchspace[[j]]$val) {
+          for (cat in private$pasting_candidates[[j]]$val) {
             box = private$create_subbox(current_box = box_new, j = j, lower = NULL, upper = NULL, val = cat)
             eval = private$evaluate_box(box = box, desired_range = private$desired_range,
               x_interest = private$x_interest)
@@ -307,27 +382,8 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
             res = rbind(res, resrow)
           }
         } else {
-          for (l in names(private$searchspace[[j]])) {
-            bound = private$alpha*(private$searchspace[[j]][[l]][1])+(1-private$alpha)*box_new[[l]][[j]]
-
-            # Add modification for integers
-            if (box_new$class[[j]] == "ParamInt") {
-              if (l == "lower") {
-                bound = floor(bound)
-              } else {
-                bound = ceiling(bound)
-              }
-            }
-
-            # Skip this candidate bound if doesn't change the box
-            if ((l == "lower" && identical(bound, box_new$lower[[j]])) ||
-                (l == "upper" && identical(bound, box_new$upper[[j]]))) {
-              # if candidate bound = current bound, then with any alpha we will
-              # get the same candidate -> best to remove it
-              private$searchspace[[j]][[l]] = private$searchspace[[j]][[l]][-1]
-              private$searchspace = private$declutter_searchspace(j)
-              next
-            }
+          for (l in names(private$pasting_candidates[[j]])) {
+            bound = private$pasting_candidates[[j]][[l]]
 
             # Create candidate box
             if (l == "lower") {
@@ -353,17 +409,27 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         return(box_new)
       }
 
-      # remove the categories with impurity > 0
-      # <FIXME:> change this to allow for slight impurity
-      remove = res_table[!is.na(val) & impurity > 0, ]
+      # Remove impure categories from the list of candidates
+      remove = res_table[!is.na(val) & impurity > 0, ] # filter impure categories
       if (nrow(remove) > 0) {
         for (i in seq_len(nrow(remove))) {
-          private$searchspace[[remove[i, var]]]$val = setdiff(private$searchspace[[remove[i, var]]]$val, remove[i, val])
-          if (length(private$searchspace[[remove[i, var]]]$val) == 0) {
-            private$searchspace[[remove[i, var]]] = NULL
+          var_i = remove[i, var] # variable's name
+          val_i = remove[i, val] # impure category
+
+          # remove impure category from candidate list
+          private$pasting_categ_candidates[[var_i]] =
+            setdiff(private$pasting_categ_candidates[[var_i]], val_i)
+
+          # drop ("clean") variable if there are no categories
+          if (length(private$pasting_categ_candidates[[var_i]]) == 0) {
+            private$pasting_categ_candidates[[var_i]] = NULL
           }
         }
       }
+
+      cat("\nres_table:\n")
+      print(res_table)
+
       # identify best (full purity + lowest distance to pred_x_interest)
       # only impure --> smaller boxes
       if (private$strategy_ties == "random") {
@@ -376,16 +442,16 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       if (best$impurity > 0) {
         private$alpha = private$alpha*1/2
       } else {
-        # make boxes larger with respect to one direction
-        if (!is.na(best$upper) && private$alpha == 1) {
-          private$searchspace[[best$var]]$upper = private$searchspace[[best$var]]$upper[-1]
-        } else if (!is.na(best$lower) && private$alpha == 1) {
-          private$searchspace[[best$var]]$lower = private$searchspace[[best$var]]$lower[-1]
-        } else if (!is.na(best$val)) {
-          private$searchspace[[best$var]]$val = setdiff(private$searchspace[[best$var]]$val, best$val)
+
+        if (!is.na(best[["val"]])) {
+          private$pasting_categ_candidates[[best$var]] =
+            setdiff(private$pasting_categ_candidates[[best$var]], best[["val"]])
+
+          if (length(private$pasting_categ_candidates[[best$var]]) == 0) {
+            private$pasting_categ_candidates[[best$var]] = NULL
+          }
         }
-        ## Declutter searchspace
-        private$searchspace = private$declutter_searchspace(best$var)
+
         box_new = update_box(current_box = box_new, j = best$var, lower = best[["lower"]],
           upper = best[["upper"]], val = best[["val"]], complement = TRUE)
         ## Save info in history
