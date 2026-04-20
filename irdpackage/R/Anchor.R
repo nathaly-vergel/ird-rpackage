@@ -1,5 +1,14 @@
 #' Anchors
 #'
+#' Optional IRD method based on the external anchors package.
+#' This method is only available if the suggested package anchors
+#' is installed.
+#'
+#' For details on the original method, see
+#' \href{https://ojs.aaai.org/index.php/AAAI/article/view/11491}{Ribeiro et al. (2018)}.
+#' The R implementation can be found at
+#' \href{https://github.com/viadee/anchorsOnR}{anchorsOnR repository}.
+#'
 #' @export
 Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
   public = list(
