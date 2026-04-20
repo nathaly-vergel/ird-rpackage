@@ -17,7 +17,6 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
     #' Immutable features defined in `fixed_features` are automatially set to integer().
     #' @param ... \cr Further hyperparameters of anchors (see `anchors::anchors`).
     #' @return (RegDesc) Hyperbox
-    #' @import anchors
     initialize = function(predictor,
                           tau = 1,
                           initialize_bins = TRUE,
