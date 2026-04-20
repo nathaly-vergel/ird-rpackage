@@ -24,6 +24,14 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
                           quiet = FALSE,
                           ...) {
 
+      if (!requireNamespace("anchors", quietly = TRUE)) {
+        stop(
+          "Package 'anchors' is required to use the Anchor method. ",
+          "Please install it separately.",
+          call. = FALSE
+        )
+      }
+
       super$initialize(predictor, quiet)
       if (!is.null(bins)) {
         assert_names(names(bins), subset.of = private$predictor$data$feature.names)
