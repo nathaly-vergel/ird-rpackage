@@ -130,9 +130,9 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
       }
 
       if (private$quiet) {
-        explanations = try({suppressMessages(explain(private$x_interest, explainer, labels = 1))})
+        explanations = try({suppressMessages(anchors::explain(private$x_interest, explainer, labels = 1))})
       } else {
-        explanations = try({explain(private$x_interest, explainer)
+        explanations = try({anchors::explain(private$x_interest, explainer)
         })
       }
       # if (private$tries_if_error > 0) {
