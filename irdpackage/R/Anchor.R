@@ -44,7 +44,7 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
       super$initialize(predictor, quiet)
       if (!is.null(bins)) {
         assert_names(names(bins), subset.of = private$predictor$data$feature.names)
-        bins = bins[match(names(bins), pred$data$feature.names)]
+        bins = bins[match(names(bins), private$predictor$data$feature.names)]
       }
 
       # assign private attr
