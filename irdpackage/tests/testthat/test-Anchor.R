@@ -1,6 +1,7 @@
 library(randomForest)
 
 test_that("Box is covered by true box", {
+  skip_if_not_installed("anchors")
 
   temp = get_box_regr_mtcars()
   pred = temp$model
