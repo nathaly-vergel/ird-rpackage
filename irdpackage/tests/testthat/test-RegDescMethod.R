@@ -91,10 +91,17 @@ test_that("own dataset and largest local box could be used", {
   maxboxb = maxbox$find_box(x_interest = x_interest, desired_range = c(0.5, 1), obsdata = sampled, box_largest = box_largest)
   expect_true(all(sampled == maxbox$.__enclos_env__$private$obsdata[-1,]))
   expect_equal(nrow(sampled)+1, maxbox$calls_fhat)
-  anchors = Anchor$new(pred_classif, quiet = TRUE)
-  anchorsb = anchors$find_box(x_interest = x_interest, desired_range = c(0.5, 1), obsdata = sampled, box_largest = box_largest)
-  expect_true(anchors$calls_fhat > nrow(sampled)+1L)
-  expect_true(all(sampled == anchors$.__enclos_env__$private$obsdata[-1,-5]))
+  if (requireNamespace("anchors", quietly = TRUE)) {
+    anchors = Anchor$new(pred_classif, quiet = TRUE)
+    anchorsb = anchors$find_box(
+      x_interest = x_interest,
+      desired_range = c(0.5, 1),
+      obsdata = sampled,
+      box_largest = box_largest
+    )
+    expect_true(anchors$calls_fhat > nrow(sampled) + 1L)
+    expect_true(all(sampled == anchors$.__enclos_env__$private$obsdata[-1, -5]))
+  }
   postproc = PostProcessing$new(pred_classif, quiet = TRUE)
   postprocb = postproc$find_box(x_interest = x_interest, desired_range = c(0.5, 1), obsdata = sampled, box_largest = box_largest,
     box_init = mairb$box)
