@@ -6,7 +6,6 @@
 #' @import parallel
 #' @import tensorflow
 #' @import keras
-#' @import anchors
 NULL
 
 # R6 maybe later on!

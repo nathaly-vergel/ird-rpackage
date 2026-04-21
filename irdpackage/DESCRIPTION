@@ -20,12 +20,12 @@ Imports:
     iml,
     data.table,
     R6,
-    anchors,
     keras,
     tensorflow,
     ggplot2, 
     rlang
 Suggests: 
+    anchors,
     knitr,
     rmarkdown,
     MASS,

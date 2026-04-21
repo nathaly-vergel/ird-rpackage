@@ -1,5 +1,14 @@
 #' Anchors
 #'
+#' Optional IRD method based on the external anchors package.
+#' This method is only available if the suggested package anchors
+#' is installed.
+#'
+#' For details on the original method, see
+#' \href{https://ojs.aaai.org/index.php/AAAI/article/view/11491}{Ribeiro et al. (2018)}.
+#' The R implementation can be found at
+#' \href{https://github.com/viadee/anchorsOnR}{anchorsOnR repository}.
+#'
 #' @export
 Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
   public = list(
@@ -17,7 +26,6 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
     #' Immutable features defined in `fixed_features` are automatially set to integer().
     #' @param ... \cr Further hyperparameters of anchors (see `anchors::anchors`).
     #' @return (RegDesc) Hyperbox
-    #' @import anchors
     initialize = function(predictor,
                           tau = 1,
                           initialize_bins = TRUE,
@@ -25,10 +33,18 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
                           quiet = FALSE,
                           ...) {
 
+      if (!requireNamespace("anchors", quietly = TRUE)) {
+        stop(
+          "Package 'anchors' is required to use the Anchor method. ",
+          "Please install it separately.",
+          call. = FALSE
+        )
+      }
+
       super$initialize(predictor, quiet)
       if (!is.null(bins)) {
         assert_names(names(bins), subset.of = private$predictor$data$feature.names)
-        bins = bins[match(names(bins), pred$data$feature.names)]
+        bins = bins[match(names(bins), private$predictor$data$feature.names)]
       }
 
       # assign private attr
@@ -114,9 +130,9 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
       }
 
       if (private$quiet) {
-        explanations = try({suppressMessages(explain(private$x_interest, explainer, labels = 1))})
+        explanations = try({suppressMessages(anchors::explain(private$x_interest, explainer, labels = 1))})
       } else {
-        explanations = try({explain(private$x_interest, explainer)
+        explanations = try({anchors::explain(private$x_interest, explainer)
         })
       }
       # if (private$tries_if_error > 0) {
