@@ -1,23 +1,54 @@
 #' PRIM
 #'
+#' @description
+#' Regional descriptor method based on PRIM (Patient Rule Induction Method),
+#' adapted to search for interpretable regional descriptors (IRDs).
+#'
+#' The method starts from a large box around `x_interest`, then iteratively
+#' peels away regions to improve purity and pastes back regions as long as the
+#' resulting box remains homogeneous. In this package, PRIM is adapted to return
+#' a box that contains `x_interest` and aims for high coverage under full
+#' precision.
+#'
+#' @references
+#' Friedman, J. H., & Fisher, N. I. (1999).
+#' Bump hunting in high-dimensional data.
+#' *Statistics and Computing*, 9(2), 123–143.
+#' \url{https://link.springer.com/article/10.1023/A:1008894516817}
+#'
+#' Dandl, S., Casalicchio, G., Bischl, B., & Bothmann, L. (2023).
+#' Interpretable Regional Descriptors: Hyperbox-Based Local Explanations.
+#' \url{https://arxiv.org/abs/2305.02780}
+#'
 #' @export
 Prim = R6::R6Class("Prim", inherit = RegDescMethod,
 
   public = list(
+    #' @description
+    #' Creates a new `Prim` object.
+    #'
     #' @param predictor (`iml::Predictor`) \cr
-    #' The object (created with `iml::Predictor$new()`) holding the machine
-    #' learning model and the data.
-    #' @param subbox_relsize (`numeric(1)`) \cr Number of proposed values
-    #' to search over for numeric features. If increased, more upper and lower values are
-    #' inspected. Default = 0.05 meaning that each subbox covers 5 % of the data points in
-    #' a box.
-    #' @param strategy (`character(1)`)\cr
-    #' Either `traindata` using training data or `sampled` using newly sampled data in
-    #' ICE curve identified box.
-    #' @param num_sampled_points (`numeric(1)`)\cr Only considered if `strategy = 'sampled'`.
-    #' The number of samples randomly drawn at the beginning.
-    #' @param quiet (`logical(1)`) Supress messages.
-    #' @return (RegDesc) Hyperbox
+    #'   The object (created with `iml::Predictor$new()`) holding the machine
+    #'   learning model and the data.
+    #' @param subbox_relsize (`numeric(1)`) \cr
+    #'   Relative size used to define candidate subboxes during peeling and
+    #'   pasting.
+    #'   For numeric features, it determines the quantiles used for candidate
+    #'   splits (peeling) and the number of observations added (pasting).
+    #'   Smaller values lead to smaller candidate changes and larger values lead
+    #'   to coarser steps.
+    #'   Default is `0.05`.
+    #' @param strategy (`character(1)`) \cr
+    #'   Data source used during the search.
+    #'   `"traindata"` uses the available training data.
+    #'   `"sampled"` uses newly sampled points from the largest local box around
+    #'   `x_interest`.
+    #' @param num_sampled_points (`numeric(1)`) \cr
+    #'   Number of sampled points used when `strategy = "sampled"`.
+    #' @param quiet (`logical(1)`) \cr
+    #'   Should progress messages be suppressed?
+    #'
+    #' @return A \link{RegDesc} object.
     #' @export
     initialize = function(predictor,
                           subbox_relsize = 0.05,
