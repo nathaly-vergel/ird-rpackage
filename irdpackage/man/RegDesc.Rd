@@ -37,6 +37,18 @@ equals the value in `x_interest`}
 
 \item{\code{desired_class}}{(`character(1)`) \cr
 Desired class. NULL for regression models}
+
+\item{\code{predictor}}{(`iml::Predictor`) \cr
+Predictor used to generate the regional descriptor.}
+
+\item{\code{history}}{(`data.table` | `NULL`) \cr
+Optimization history recorded by the method.}
+
+\item{\code{calls_fhat}}{(`integer(1)` | `numeric(1)` | `NULL`) \cr
+Number of prediction calls made by the method.}
+
+\item{\code{method_parameters}}{(`list` | `NULL`) \cr
+Hyperparameters used to generate the regional descriptor.}
 }
 \if{html}{\out{</div>}}
 }
@@ -63,7 +75,10 @@ Desired class. NULL for regression models}
   desired_range,
   fixed_features = NULL,
   desired_class = NULL,
-  method = NULL
+  method = NULL,
+  history = NULL,
+  calls_fhat = NULL,
+  method_parameters = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -91,6 +106,15 @@ Desired class for classification models. NULL for regression.}
 
 \item{\code{method}}{(`character(1)`)
 Name of the method used to generate the regional descriptor.}
+
+\item{\code{history}}{(`data.table` | `NULL`)
+Optimization history recorded during the search procedure.}
+
+\item{\code{calls_fhat}}{(`integer(1)` | `numeric(1)` | `NULL`)
+Number of prediction calls made during the search.}
+
+\item{\code{method_parameters}}{(`list` | `NULL`)
+Hyperparameters used to generate the regional descriptor.}
 }
 \if{html}{\out{</div>}}
 }
