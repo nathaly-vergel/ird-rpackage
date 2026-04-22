@@ -17,13 +17,22 @@ RegDesc = R6::R6Class("RegDesc",
     #'   Desired class for classification models. NULL for regression.
     #' @param method (`character(1)`)
     #'   Name of the method used to generate the regional descriptor.
+    #' @param history (`data.table` | `NULL`)
+    #'   Optimization history recorded during the search procedure.
+    #' @param calls_fhat (`integer(1)` | `numeric(1)` | `NULL`)
+    #'   Number of prediction calls made during the search.
+    #' @param method_parameters (`list` | `NULL`)
+    #'   Hyperparameters used to generate the regional descriptor.
     initialize = function(box,
                           predictor,
                           x_interest,
                           desired_range,
                           fixed_features = NULL,
                           desired_class = NULL,
-                          method = NULL){
+                          method = NULL,
+                          history = NULL,
+                          calls_fhat = NULL,
+                          method_parameters = NULL) {
       # input checks
       assert_class(box, "ParamSet")
       assert_class(predictor, "Predictor")
@@ -39,12 +48,15 @@ RegDesc = R6::R6Class("RegDesc",
 
       # assign
       private$.box = box
-      private$predictor = predictor
+      private$.predictor = predictor
       private$.x_interest = x_interest
       private$.desired_range = desired_range
       private$.desired_class = desired_class
       private$.fixed_features = fixed_features
       private$.method = method
+      private$.history = history
+      private$.calls_fhat = calls_fhat
+      private$.method_parameters = method_parameters
       if (predictor$task == "unknown") {
         if (is.numeric(predictor$data$y[[1]])) {
           predictor$task = "regression"
@@ -55,7 +67,7 @@ RegDesc = R6::R6Class("RegDesc",
       private$param_set = make_param_set(predictor$data$X)
 
       private$.box_single = get_max_box(x_interest = private$.x_interest,
-        fixed_features = private$.fixed_features, predictor = private$predictor,
+        fixed_features = private$.fixed_features, predictor = private$.predictor,
         desired_range = private$.desired_range, param_set = private$param_set,
         resolution = 50L)
     },
@@ -65,8 +77,8 @@ RegDesc = R6::R6Class("RegDesc",
     print = function(digits = 2L) {
       desired = private$.desired_range
       cat("Regional Descriptors \n \n")
-      if (private$predictor$task == "classification") {
-        cat("Desired class:", private$predictor$class, "\n")
+      if (private$.predictor$task == "classification") {
+        cat("Desired class:", private$.predictor$class, "\n")
       }
       if (desired[1L] != desired[2L]) {
         cat(
@@ -107,7 +119,7 @@ RegDesc = R6::R6Class("RegDesc",
       if (!requireNamespace("ggplot2", quietly = TRUE)) {
         stop("Package 'ggplot2' needed for this function to work. Please install it.", call. = FALSE)
       }
-      make_surface_plot(box = private$.box, param_set = private$param_set, grid_size = grid_size, predictor = private$predictor,
+      make_surface_plot(box = private$.box, param_set = private$param_set, grid_size = grid_size, predictor = private$.predictor,
         x_interest = private$.x_interest, feature_names = feature_names, surface = surface, desired_range = private$.desired_range)
     },
 
@@ -120,7 +132,7 @@ RegDesc = R6::R6Class("RegDesc",
     #' @return A named numeric vector with evaluation metrics (as returned by `evaluate_box()`).
     evaluate = function(n_samples = 100) {
       evaluate_box(box = private$.box, x_interest = private$.x_interest,
-        predictor = private$predictor, n_samples = n_samples,
+        predictor = private$.predictor, n_samples = n_samples,
         desired_range = private$.desired_range)
     },
 
@@ -132,11 +144,11 @@ RegDesc = R6::R6Class("RegDesc",
     #'
     #' @return A named numeric vector with `precision` and `coverage`.
     evaluate_train = function() {
-      evaldt = rbind(private$.x_interest, private$predictor$data$X)
+      evaldt = rbind(private$.x_interest, private$.predictor$data$X)
       inbox = identify_in_box(private$.box, evaldt)
       evaldt = evaldt[inbox,]
-      precision = sum(predict_range(private$predictor, newdata = evaldt, range = private$.desired_range))/sum(inbox)
-      coverage = sum(inbox)/nrow(private$predictor$data$X)
+      precision = sum(predict_range(private$.predictor, newdata = evaldt, range = private$.desired_range))/sum(inbox)
+      coverage = sum(inbox)/nrow(private$.predictor$data$X)
       return(c(precision = precision, coverage = coverage))
     }),
   active = list(
@@ -205,18 +217,57 @@ RegDesc = R6::R6Class("RegDesc",
       } else {
         stop("`$desired_class` is read only", call. = FALSE)
       }
+    },
+    #' @field predictor (`iml::Predictor`) \cr
+    #'   Predictor used to generate the regional descriptor.
+    predictor = function(value) {
+      if (missing(value)) {
+        private$.predictor
+      } else {
+        stop("`$predictor` is read only", call. = FALSE)
+      }
+    },
+    #' @field history (`data.table` | `NULL`) \cr
+    #'   Optimization history recorded by the method.
+    history = function(value) {
+      if (missing(value)) {
+        private$.history
+      } else {
+        stop("`$history` is read only", call. = FALSE)
+      }
+    },
+    #' @field calls_fhat (`integer(1)` | `numeric(1)` | `NULL`) \cr
+    #'   Number of prediction calls made by the method.
+    calls_fhat = function(value) {
+      if (missing(value)) {
+        private$.calls_fhat
+      } else {
+        stop("`$calls_fhat` is read only", call. = FALSE)
+      }
+    },
+    #' @field method_parameters (`list` | `NULL`) \cr
+    #'   Hyperparameters used to generate the regional descriptor.
+    method_parameters = function(value) {
+      if (missing(value)) {
+        private$.method_parameters
+      } else {
+        stop("`$method_parameters` is read only", call. = FALSE)
+      }
     }
   ),
 
   private = list(
     .box = NULL,
     .box_single = NULL,
-    predictor = NULL,
+    .predictor = NULL,
     .x_interest = NULL,
     .desired_range = NULL,
     .fixed_features = NULL,
     .desired_class = NULL,
     .method = NULL,
+    .history = NULL,
+    .calls_fhat = NULL,
+    .method_parameters = NULL,
     param_set = NULL
   )
 )

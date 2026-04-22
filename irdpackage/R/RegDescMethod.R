@@ -38,6 +38,11 @@ RegDescMethod = R6::R6Class("RegDescMethod",
       private$print_parameters()
     },
     #' @description
+    #' Returns the method hyperparameters as a named list. Needs to be defined in the leaf classes.
+    get_parameters = function() {
+      private$.get_parameters()
+    },
+    #' @description
     #' Runs the hyperrectangle searching algorithm and returns the hyperrectangles interval ranges.
     #' All observations in the hyperrectangle should have a predicted probability in the interval `desired_prob`
     #' (for classification for a `desired_class`).
@@ -121,7 +126,9 @@ RegDescMethod = R6::R6Class("RegDescMethod",
       RegDesc$new(box = box, predictor = private$predictor,
         x_interest = x_interest, desired_range = desired_range,
         fixed_features = fixed_features, desired_class = desired_class,
-        method = class(self)[1])
+        method = class(self)[1], history = private$.history,
+        calls_fhat = private$.calls_fhat,
+        method_parameters = private$.get_parameters())
 
     }),
     active = list(
@@ -273,8 +280,11 @@ RegDescMethod = R6::R6Class("RegDescMethod",
 
       return(new_box)
     },
-     run = function() {
+    run = function() {
       stop("Abstract base class")
+    },
+    .get_parameters = function() {
+      list()
     },
     print_parameters = function() {}
   )
