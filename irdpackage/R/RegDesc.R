@@ -42,15 +42,15 @@ RegDesc = R6::R6Class("RegDesc",
     #' @param method_parameters (`list` | `NULL`) \cr
     #'   Hyperparameters used to generate the descriptor.
     initialize = function(box,
-                          predictor,
-                          x_interest,
-                          desired_range,
-                          fixed_features = NULL,
-                          desired_class = NULL,
-                          method = NULL,
-                          history = NULL,
-                          calls_fhat = NULL,
-                          method_parameters = NULL) {
+      predictor,
+      x_interest,
+      desired_range,
+      fixed_features = NULL,
+      desired_class = NULL,
+      method = NULL,
+      history = NULL,
+      calls_fhat = NULL,
+      method_parameters = NULL) {
       # input checks
       assert_class(box, "ParamSet")
       assert_class(predictor, "Predictor")
@@ -112,7 +112,7 @@ RegDesc = R6::R6Class("RegDesc",
       if (desired[1L] != desired[2L]) {
         cat(
           "Desired range: [", desired[1L], ", ",
-          desired[2L],  "] \n \n", sep = ""
+          desired[2L], "] \n \n", sep = ""
         )
       } else {
         cat("Desired range:", desired[1L], "\n \n")
@@ -123,7 +123,7 @@ RegDesc = R6::R6Class("RegDesc",
       full = describe_box(private$param_set, digits = digits)
       results_single = describe_box(private$.box_single, digits = digits)
       x_interest_print = copy(private$.x_interest)
-      x_interest_print = as.character((x_interest_print[, (1:ncol(x_interest_print)) := lapply(.SD, as.character), .SDcols= 1:ncol(x_interest_print)]))
+      x_interest_print = as.character((x_interest_print[, (1:ncol(x_interest_print)) := lapply(.SD, as.character), .SDcols = 1:ncol(x_interest_print)]))
       results = data.frame(cbind(feature = results[["id"]], x_interest = x_interest_print,
         box = results[["range"]], box_single = results_single[["range"]], range = full[["range"]]))
       names(results) = c("feature", "x_interest", "regional descriptor", "1-dim descriptor", "range")
@@ -192,11 +192,12 @@ RegDesc = R6::R6Class("RegDesc",
     evaluate_train = function() {
       evaldt = rbind(private$.x_interest, private$.predictor$data$X)
       inbox = identify_in_box(private$.box, evaldt)
-      evaldt = evaldt[inbox,]
-      precision = sum(predict_range(private$.predictor, newdata = evaldt, range = private$.desired_range))/sum(inbox)
-      coverage = sum(inbox)/nrow(private$.predictor$data$X)
+      evaldt = evaldt[inbox, ]
+      precision = sum(predict_range(private$.predictor, newdata = evaldt, range = private$.desired_range)) / sum(inbox)
+      coverage = sum(inbox) / nrow(private$.predictor$data$X)
       return(c(precision = precision, coverage = coverage))
-    }),
+    }
+  ),
   active = list(
     #' @field desired_range (`numeric(2)`) \cr
     #'   Desired prediction interval associated with the descriptor.

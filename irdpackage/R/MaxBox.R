@@ -44,7 +44,11 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
     #'   Default is `FALSE`.
     #'
     #' @return A \link{RegDesc} object.
-    initialize = function(predictor, strategy = "traindata", num_sampled_points = 500L, efficient = TRUE,  quiet = FALSE) {
+    initialize = function(predictor,
+                          strategy = "traindata",
+                          num_sampled_points = 500L,
+                          efficient = TRUE,
+                          quiet = FALSE) {
       super$initialize(predictor, quiet)
       assert_character(strategy, len = 1L)
       assert_names(strategy, subset.of = c("traindata", "sampled"))
@@ -52,13 +56,18 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
 
       private$strategy = strategy
       if (strategy == "sampled") {
-        assert_numeric(num_sampled_points, lower = 1, finite = TRUE, len = 1L, null.ok = FALSE)
+        assert_numeric(num_sampled_points,
+                       lower = 1,
+                       finite = TRUE,
+                       len = 1L,
+                       null.ok = FALSE)
         private$num_sampled_points = num_sampled_points
       }
 
       private$efficient = efficient
 
-    }),
+    }
+  ),
   private = list(
     strategy = NULL,
     num_sampled_points = NULL,
@@ -69,24 +78,28 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
     explx_interest = NULL,
     positive = NULL,
     plotdata = NULL, # <FIXME>: remove!!
-    run = function(){
+    run = function() {
       if (is.null(private$obsdata)) {
         # Get data (either training or newly sampled depending on strategy)
-        private$obsdata = sampling(predictor = private$predictor, x_interest = private$x_interest,
-          fixed_features = private$fixed_features, desired_range = private$desired_range,
-          param_set = private$param_set, num_sampled_points = private$num_sampled_points,
-          strategy = private$strategy)
+        private$obsdata = sampling(predictor = private$predictor,
+                                   x_interest = private$x_interest,
+                                   fixed_features = private$fixed_features,
+                                   desired_range = private$desired_range,
+                                   param_set = private$param_set,
+                                   num_sampled_points = private$num_sampled_points,
+                                   strategy = private$strategy)
       }
       private$obsdata = rbind(private$x_interest, private$obsdata[, private$predictor$data$feature.names, with = FALSE])
 
       # get positive and negative samples
       private$.calls_fhat = private$.calls_fhat + nrow(private$obsdata)
       private$positive = ifelse(predict_range(private$predictor,
-        newdata = private$obsdata,
-        range = private$desired_range) == 1, TRUE, FALSE)
+                                              newdata = private$obsdata,
+                                              range = private$desired_range) == 1,
+                                TRUE, FALSE)
       assert_true(length(private$positive) == nrow(private$obsdata))
 
-      if (!is.null(private$fixed_features))  {
+      if (!is.null(private$fixed_features)) {
         private$obsdata = private$obsdata[, (private$fixed_features) := NULL]
         x_interest = copy(private$x_interest)[, (private$fixed_features) := NULL]
       } else {
@@ -101,7 +114,7 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
 
       private$explx_interest = expldata$explx_interest
       private$expldata = expldata$expldata
-      private$expldata = private$expldata[, positive:= private$positive]
+      private$expldata = private$expldata[, positive := private$positive]
       private$expldata$x_interest = FALSE
       private$expldata$x_interest[1] = TRUE
       private$categorylist = attr(expldata, "categorylist")
@@ -111,9 +124,9 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
       posmin = private$expldata[positive == 1, lapply(.SD, min), .SDcols = names(private$expldata)]
       posmax = private$expldata[positive == 1, lapply(.SD, max), .SDcols = names(private$expldata)]
 
-      inbox = private$expldata[, all(between(.SD, lower = posmin, upper = posmax)), by = seq_len(nrow(private$expldata)),]$seq_len
-      private$expldata = private$expldata[inbox,]
-      private$obsdata = private$obsdata[inbox,]
+      inbox = private$expldata[, all(between(.SD, lower = posmin, upper = posmax)), by = seq_len(nrow(private$expldata)), ]$seq_len
+      private$expldata = private$expldata[inbox, ]
+      private$obsdata = private$obsdata[inbox, ]
 
       if (ncol(private$expldata) > 500L) {
         stop(sprintf("%s subproblems were detected that need to be inspected per iteration. The MaxBox approach is not suitable for this number.", ncol(private$expldata)))
@@ -123,7 +136,7 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
       #   private$plotdata = cbind(private$expldata, class = private$positive)
       # }
 
-      private$.history = data.table(iteration=numeric(), cov = numeric(),
+      private$.history = data.table(iteration = numeric(), cov = numeric(),
         subprobleft = numeric())
 
       ###### Branch-and-bound #####
@@ -158,7 +171,7 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
           # plot:
           # private$plot_box(node)
           # generate new candidates
-          children =  private$get_subproblems(node)
+          children = private$get_subproblems(node)
           # if new child boxes that include x_interest found --> inspect
           if (length(children) > 0) {
             # private$plot_box(children[[1]], negsample = node$negsample)
@@ -195,7 +208,7 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
               }
             }
           }
-          i = i+1L
+          i = i + 1L
           if (!private$quiet) {
             message(paste("iteration", i, "with", length(candidate_queue), "candidates alive"))
           }
@@ -208,7 +221,7 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
 
       }
       if (is.null(current_optimum)) current_optimum = node
-      param_set = make_param_set(private$obsdata[current_optimum$inbox,])
+      param_set = make_param_set(private$obsdata[current_optimum$inbox, ])
       return(param_set)
     },
     # check feasibility --> p. 290
@@ -223,7 +236,7 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
     get_best = function(candidate_queue, criterion = c("upper_bound", "no_neg", "frac_pos_neg")) {
       if (criterion == "upper_bound") {
         quality = sapply(candidate_queue, function(cq) cbind(cq[["depth"]], cq[["upper_bound"]]))
-        best = order(quality[1,], quality[2,], decreasing = TRUE)[1]
+        best = order(quality[1, ], quality[2, ], decreasing = TRUE)[1]
       } else if (criterion == "no_neg") {
         quality = sapply(candidate_queue, function(cq) private$evaluate(cq)[criterion])
         best = which.min(quality)
@@ -250,7 +263,7 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
           return(splitcrit)
         }
       })
-      children[sapply(children, is.null)] <- NULL
+      children[sapply(children, is.null)] = NULL
       return(children)
     },
     evaluate = function(node) {
@@ -259,7 +272,7 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
       neg = length(inbox) - pos
       bb = c(pos = pos,
         no_neg = neg,
-        frac_pos_neg = pos/neg)
+        frac_pos_neg = pos / neg)
       return(bb)
     },
 
@@ -269,7 +282,7 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
         child_inbox = NULL
       } else {
         # posinbox = subset(private$expldata[inbox,], positive)
-        neginbox = subset(private$expldata[inbox,], !positive)
+        neginbox = subset(private$expldata[inbox, ], !positive)
         idsneg = inbox[!private$expldata$positive[inbox]]
         # if (length(idsneg) > 100) {
         #   idsneg = sample(idsneg, 10)
@@ -289,17 +302,17 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
         best_coverage = Inf
         best_coverage_feasible = Inf
 
-       for (i in idsneg) {
+        for (i in idsneg) {
           vec = names(private$expldata)
-          vec = vec[-c(length(vec)-1, length(vec))]
+          vec = vec[-c(length(vec) - 1, length(vec))]
           overview = private$expldata[inbox, vec, with = FALSE]
-          overview = overview[, Map(compare, .SD, private$expldata[i,vec, with = FALSE], private$explx_interest), .SDcols = vec]
+          overview = overview[, Map(compare, .SD, private$expldata[i, vec, with = FALSE], private$explx_interest), .SDcols = vec]
           # maximum number of positive samples
           overview[, positive := private$expldata[inbox, positive]]
           coverage = colSums(subset(overview, positive))[-ncol(overview)]
           if (private$efficient) {
             no_inbox = colSums(overview)[-ncol(overview)]
-            all_positive = ifelse(coverage/colSums(overview)[-ncol(overview)] == 1, 1, 0)
+            all_positive = ifelse(coverage / colSums(overview)[-ncol(overview)] == 1, 1, 0)
             # get upper bound
             if (any(all_positive == 1, na.rm = TRUE)) {
               coverage_feasible = coverage[order(all_positive, coverage, decreasing = TRUE)][[1]]
@@ -312,16 +325,16 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
           } else {
             best_coverage_feasible = max(coverage)
           }
-            # which samples per feature in box
-            coverage = max(coverage)
-            if (coverage < best_coverage) {
-              overview[, positive := NULL]
-              child_inbox = apply(overview, MARGIN = 2L, FUN = function(col) {
-                a = inbox[which(col)]
-              })
-                best_coverage = coverage
-            }
-         }
+          # which samples per feature in box
+          coverage = max(coverage)
+          if (coverage < best_coverage) {
+            overview[, positive := NULL]
+            child_inbox = apply(overview, MARGIN = 2L, FUN = function(col) {
+              a = inbox[which(col)]
+            })
+            best_coverage = coverage
+          }
+        }
         if (best_coverage_feasible == Inf) {
           best_coverage_feasible = 0
         }
@@ -334,21 +347,26 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
       box = node$inbox
       p = ggplot(data = private$plotdata, aes(x1, x2, color = class)) +
         geom_point() +
-        geom_vline(xintercept = box[[1,1]]) +
-        geom_vline(xintercept = box[[4,1]]) +
-        geom_hline(yintercept = box[[1,2]]) +
-        geom_hline(yintercept = box[[4,2]]) +
-        geom_point(x = private$x_interest$x1, y = private$x_interest$x2, color = "black")
+        geom_vline(xintercept = box[[1, 1]]) +
+        geom_vline(xintercept = box[[4, 1]]) +
+        geom_hline(yintercept = box[[1, 2]]) +
+        geom_hline(yintercept = box[[4, 2]]) +
+        geom_point(x = private$x_interest$x1, y = private$x_interest$x2,
+                   color = "black")
       if (!is.null(negsample)) {
-        p = p + geom_point(x = private$plotdata$x1[negsample], y = private$plotdata$x2[negsample], color = "darkblue")
+        p = p + geom_point(x = private$plotdata$x1[negsample],
+                           y = private$plotdata$x2[negsample],
+                           color = "darkblue")
       }
-      if (!is.null(node$negsample)){
-        p = p + geom_point(x = private$plotdata$x1[node$negsample], y = private$plotdata$x2[node$negsample], color = "gray")
+      if (!is.null(node$negsample)) {
+        p = p + geom_point(x = private$plotdata$x1[node$negsample],
+                           y = private$plotdata$x2[node$negsample],
+                           color = "gray")
       }
       print(p)
     },
     retransform_to_ps = function(box) {
-      box = box[c(1, 4),]
+      box = box[c(1, 4), ]
       current_box = make_param_set(private$x_interest)
       for (fnam in private$predictor$data$feature.names) {
         if (fnam %in% private$fixed_features) next
@@ -358,17 +376,20 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
         if (private$predictor$data$feature.types[fnam] == "numerical") {
           l_val = box[[1, fnam]]
           u_val = box[[2, fnam]]
-          current_box = update_box(current_box, j = j, lower = l_val, upper = u_val)
+          current_box = update_box(current_box,
+                                   j = j,
+                                   lower = l_val,
+                                   upper = u_val)
         } else {
           if (!is.ordered(fcol)) {
             fcol = factor(fcol)
             lev = levels(fcol)
             if (length(unique(fcol)) == 2L) {
-              val = unique(levels(fcol)[box[[fnam]]+1])
+              val = unique(levels(fcol)[box[[fnam]] + 1])
             } else {
               #<FIXME:> apply strategy!!
               colid = grepl(names(box), pattern = paste0(fnam, "_"))
-              oneinc = as.logical(box[ , lapply(.SD, function(s) any(s == 1)), .SDcols = names(box)[colid]])
+              oneinc = as.logical(box[, lapply(.SD, function(s) any(s == 1)), .SDcols = names(box)[colid]])
               val = sub(paste0(fnam, "_"), replacement = "", x = names(box)[which(colid)[oneinc]])
             }
           } else {
