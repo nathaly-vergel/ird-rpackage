@@ -356,6 +356,13 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
       # cat(" - searchgrid_resolution: ", private$searchgrid_resolution, "\n")
       # cat(" - evaluation_n: ", private$evaluation_n, "\n")
       # cat(" - paste_alpha: ", private$paste_alpha, "\n")
+    },
+    .get_parameters = function() {
+      list(
+        strategy = private$strategy,
+        num_sampled_points = private$num_sampled_points,
+        efficient = private$efficient
+      )
     }
   )
 )

@@ -28,6 +28,7 @@ The R implementation can be found at
 <details open><summary>Inherited methods</summary>
 <ul>
 <li><span class="pkg-link" data-pkg="irdpackage" data-topic="RegDescMethod" data-id="find_box"><a href='../../irdpackage/html/RegDescMethod.html#method-RegDescMethod-find_box'><code>irdpackage::RegDescMethod$find_box()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="irdpackage" data-topic="RegDescMethod" data-id="get_parameters"><a href='../../irdpackage/html/RegDescMethod.html#method-RegDescMethod-get_parameters'><code>irdpackage::RegDescMethod$get_parameters()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="irdpackage" data-topic="RegDescMethod" data-id="print"><a href='../../irdpackage/html/RegDescMethod.html#method-RegDescMethod-print'><code>irdpackage::RegDescMethod$print()</code></a></span></li>
 </ul>
 </details>

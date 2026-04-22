@@ -29,6 +29,7 @@ Read-only.}
 \itemize{
 \item \href{#method-RegDescMethod-new}{\code{RegDescMethod$new()}}
 \item \href{#method-RegDescMethod-print}{\code{RegDescMethod$print()}}
+\item \href{#method-RegDescMethod-get_parameters}{\code{RegDescMethod$get_parameters()}}
 \item \href{#method-RegDescMethod-find_box}{\code{RegDescMethod$find_box()}}
 \item \href{#method-RegDescMethod-clone}{\code{RegDescMethod$clone()}}
 }
@@ -62,6 +63,16 @@ Prints a `RegDescMethod` object.
 The method calls a (private) `$print_parameters()` method which should be implemented by the leaf classes.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDescMethod$print()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-RegDescMethod-get_parameters"></a>}}
+\if{latex}{\out{\hypertarget{method-RegDescMethod-get_parameters}{}}}
+\subsection{Method \code{get_parameters()}}{
+Returns the method hyperparameters as a named list. Needs to be defined in the leaf classes.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{RegDescMethod$get_parameters()}\if{html}{\out{</div>}}
 }
 
 }

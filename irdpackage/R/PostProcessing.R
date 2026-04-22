@@ -469,6 +469,14 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       cat(" - subbox_relsize: ", private$subbox_relsize, "\n")
       cat(" - evaluation_n: ", private$evaluation_n, "\n")
       cat(" - paste_alpha: ", private$paste_alpha, "\n")
+    },
+    .get_parameters = function() {
+      list(
+        subbox_relsize = private$subbox_relsize,
+        evaluation_n = private$evaluation_n,
+        paste_alpha = private$paste_alpha,
+        strategy_ties = private$strategy_ties
+      )
     }
   )
 )

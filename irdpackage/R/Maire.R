@@ -549,6 +549,24 @@ Maire = R6::R6Class("Maire",
       # cat(" - searchgrid_resolution: ", private$searchgrid_resolution, "\n")
       # cat(" - evaluation_n: ", private$evaluation_n, "\n")
       # cat(" - paste_alpha: ", private$paste_alpha, "\n")
+    },
+    .get_parameters = function() {
+      list(
+        num_of_iterations = private$num_of_iterations,
+        convergence = private$convergence,
+        strategy = private$strategy,
+        num_sampled_points = private$num_sampled_points,
+        lambda_val_1 = private$lambda_val_1,
+        lambda_val = private$lambda_val,
+        threshold = private$threshold,
+        c1 = private$c1,
+        c2 = private$c2,
+        c3 = private$c3,
+        c4 = private$c4,
+        c5 = private$c5,
+        cl = private$cl,
+        ch = private$ch
+      )
     }
   )
 )
