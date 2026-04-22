@@ -6,6 +6,8 @@
 #' @import parallel
 #' @import tensorflow
 #' @import keras
+#' @importFrom stats dist model.matrix var
+#' @importFrom rlang .data
 NULL
 
 # R6 maybe later on!
