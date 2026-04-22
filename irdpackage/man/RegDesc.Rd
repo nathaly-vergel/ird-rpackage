@@ -2,53 +2,68 @@
 % Please edit documentation in R/RegDesc.R
 \name{RegDesc}
 \alias{RegDesc}
-\title{Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of regional descriptor algorithms, such as \link{Prim}, \link{MaxBox}, \link{Maire} or \link{PostProcessing}.}
+\title{Regional Descriptor}
 \description{
-Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of regional descriptor algorithms, such as \link{Prim}, \link{MaxBox}, \link{Maire} or \link{PostProcessing}.
+An object storing an interpretable regional descriptor (IRD) for a single
+observation.
 
-Creates a new Regional Descriptor (`RegDesc`) object.
-This method should only be called by the `$find_box` methods of regional descriptor algorithms, such as \link{Prim}, \link{MaxBox}, \link{Maire} or \link{PostProcessing}.
+In addition to the descriptor itself, the object stores metadata about how
+it was generated, such as the method, optimization history and number of
+prediction calls.
+
+This method should only be called by the `$find_box` methods of regional
+descriptor algorithms, such as \link{Prim}, \link{MaxBox}, \link{Maire} or
+\link{PostProcessing}.
 }
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
-\item{\code{desired_range}}{(`numeric(2)`)
-Desired prediction range associated with the regional descriptor.
-Read-only! Represents the interval used to define precision.}
+\item{\code{desired_range}}{(`numeric(2)`) \cr
+Desired prediction interval associated with the descriptor.
+Read-only.}
 
-\item{\code{box}}{(`ParamSet`)\cr
-The regional descriptor for `x_interest`.}
+\item{\code{box}}{(`ParamSet`) \cr
+Multi-dimensional regional descriptor for `x_interest`.
+Read-only.}
 
-\item{\code{box_single}}{(`ParamSet`)\cr
-The regional descriptors only mutating a single feature for `x_interest`.}
+\item{\code{box_single}}{(`ParamSet`) \cr
+One-dimensional regional descriptors obtained by varying one feature
+at a time around `x_interest`.
+Read-only.}
 
 \item{\code{x_interest}}{(`data.table(1)`) \cr
-A single row with the observation of interest.}
+Observation explained by the descriptor.
+Read-only.}
 
 \item{\code{method}}{(`character(1)`) \cr
-Method with which regional descriptors were generated.}
+Method used to generate the regional descriptor.
+Read-only.}
 
 \item{\code{fixed_features}}{(`character()` | `NULL`) \cr
-Names of features that were held fixed (immutable) during construction
-of the regional descriptor. For these features, the descriptor interval
-equals the value in `x_interest`}
+Names of features that were held fixed during descriptor construction.
+For these features, the descriptor equals the value in `x_interest`.
+Read-only.}
 
-\item{\code{desired_class}}{(`character(1)`) \cr
-Desired class. NULL for regression models}
+\item{\code{desired_class}}{(`character(1)` | `NULL`) \cr
+Desired class used for classification models.
+`NULL` for regression.
+Read-only.}
 
 \item{\code{predictor}}{(`iml::Predictor`) \cr
-Predictor used to generate the regional descriptor.}
+Predictor used to generate the regional descriptor.
+Read-only.}
 
 \item{\code{history}}{(`data.table` | `NULL`) \cr
-Optimization history recorded by the method.}
+Optimization history recorded by the method.
+Read-only.}
 
 \item{\code{calls_fhat}}{(`integer(1)` | `numeric(1)` | `NULL`) \cr
-Number of prediction calls made by the method.}
+Number of prediction calls made during the search.
+Read-only.}
 
 \item{\code{method_parameters}}{(`list` | `NULL`) \cr
-Hyperparameters used to generate the regional descriptor.}
+Hyperparameters used to generate the regional descriptor.
+Read-only.}
 }
 \if{html}{\out{</div>}}
 }
@@ -67,6 +82,9 @@ Hyperparameters used to generate the regional descriptor.}
 \if{html}{\out{<a id="method-RegDesc-new"></a>}}
 \if{latex}{\out{\hypertarget{method-RegDesc-new}{}}}
 \subsection{Method \code{new()}}{
+Creates a new `RegDesc` object.
+This method is usually called internally by `$find_box()` methods such as
+\link{Prim}, \link{MaxBox}, \link{Maire}, or \link{PostProcessing}.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDesc$new(
   box,
@@ -85,36 +103,38 @@ Hyperparameters used to generate the regional descriptor.}
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{box}}{(`ParamSet`)}
+\item{\code{box}}{(`ParamSet`) \cr
+The resulting regional descriptor.}
 
-\item{\code{predictor}}{(\link[iml]{Predictor})\cr
-The object (created with `iml::Predictor$new()`) holding the machine learning model and the data.}
+\item{\code{predictor}}{(\link[iml]{Predictor}) \cr
+The object (created with `iml::Predictor$new()`) holding the machine
+learning model and the data.}
 
 \item{\code{x_interest}}{(`data.table(1)` | `data.frame(1)`) \cr
-A single row with the observation of interest.}
+A single observation of interest.}
 
 \item{\code{desired_range}}{(`numeric(2)`) \cr
 Desired predicted outcome interval associated with the descriptor.
-This must be a length-2 numeric vector already resolved by the calling `$find_box()` method.
-This outcome interval needs to include the predicted value of `x_interest`.}
+This must be a length-2 numeric vector already resolved by the calling
+`$find_box()` method. It must include the prediction of `x_interest`.}
 
-\item{\code{fixed_features}}{(`character()` | NULL)
-Names of features that are kept fixed (immutable) when constructing the descriptor.}
+\item{\code{fixed_features}}{(`character()` | `NULL`) \cr
+Names of features that were kept fixed when constructing the descriptor.}
 
-\item{\code{desired_class}}{(`character(1)` | NULL)
-Desired class for classification models. NULL for regression.}
+\item{\code{desired_class}}{(`character(1)` | `NULL`) \cr
+Desired class for classification models. `NULL` for regression.}
 
-\item{\code{method}}{(`character(1)`)
-Name of the method used to generate the regional descriptor.}
+\item{\code{method}}{(`character(1)`) \cr
+Name of the method used to generate the descriptor.}
 
-\item{\code{history}}{(`data.table` | `NULL`)
-Optimization history recorded during the search procedure.}
+\item{\code{history}}{(`data.table` | `NULL`) \cr
+Optimization history recorded during the search.}
 
-\item{\code{calls_fhat}}{(`integer(1)` | `numeric(1)` | `NULL`)
+\item{\code{calls_fhat}}{(`integer(1)` | `numeric(1)` | `NULL`) \cr
 Number of prediction calls made during the search.}
 
-\item{\code{method_parameters}}{(`list` | `NULL`)
-Hyperparameters used to generate the regional descriptor.}
+\item{\code{method_parameters}}{(`list` | `NULL`) \cr
+Hyperparameters used to generate the descriptor.}
 }
 \if{html}{\out{</div>}}
 }
@@ -123,7 +143,15 @@ Hyperparameters used to generate the regional descriptor.}
 \if{html}{\out{<a id="method-RegDesc-print"></a>}}
 \if{latex}{\out{\hypertarget{method-RegDesc-print}{}}}
 \subsection{Method \code{print()}}{
-Prints the `RegDesc` object.
+Prints the `RegDesc` object as a compact summary table.
+
+The printed output includes:
+\itemize{
+  \item the feature values of `x_interest`
+  \item the multi-dimensional regional descriptor
+  \item a 1-dim descriptor for each feature
+  \item the full observed feature range
+}
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDesc$print(digits = 2L)}\if{html}{\out{</div>}}
 }
@@ -131,11 +159,8 @@ Prints the `RegDesc` object.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{digits}}{(`integer(1)`) Number of decimal places used when printing numeric box boundaries.
-Plot a surface over two features within the descriptor box.
-
-Creates a 2D surface plot for the selected features, restricted to the
-regional descriptor and using the stored predictor.}
+\item{\code{digits}}{(`integer(1)`) \cr
+Number of decimal places used when printing numeric box boundaries.}
 }
 \if{html}{\out{</div>}}
 }
@@ -144,6 +169,10 @@ regional descriptor and using the stored predictor.}
 \if{html}{\out{<a id="method-RegDesc-plot_surface"></a>}}
 \if{latex}{\out{\hypertarget{method-RegDesc-plot_surface}{}}}
 \subsection{Method \code{plot_surface()}}{
+Plot a 2D surface over two selected features within the descriptor box.
+
+Depending on `surface`, the plot shows either the model prediction surface
+or whether points are inside the desired prediction range.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDesc$plot_surface(feature_names, grid_size = 250L, surface = "prediction")}\if{html}{\out{</div>}}
 }
@@ -151,27 +180,38 @@ regional descriptor and using the stored predictor.}
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{feature_names}}{(`character(2)`) Names of the two features to plot.
-Must be contained in `private$.box$ids()`.}
+\item{\code{feature_names}}{(`character(2)`) \cr
+Names of the two features to plot.}
 
-\item{\code{grid_size}}{(`integer(1)`) Grid resolution for the surface (default 250).}
+\item{\code{grid_size}}{(`integer(1)`) \cr
+Grid resolution for the surface plot. Default is `250`.}
 
-\item{\code{surface}}{(`character(1)`) Which surface to plot: `"prediction"` or `"range"`.}
+\item{\code{surface}}{(`character(1)`) \cr
+Type of surface to display.
+`"prediction"` plots the raw model prediction over the selected feature grid.
+`"range"` plots a binary surface indicating whether the prediction at each
+grid point falls inside `desired_range`.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
 A `ggplot2` object.
-Evaluate the descriptor by sampling
-
-Estimates coverage and precision by drawing `n_samples` points (via
-`evaluate_box()`) and checking whether predictions fall within `desired_range`.
 }
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-RegDesc-evaluate"></a>}}
 \if{latex}{\out{\hypertarget{method-RegDesc-evaluate}{}}}
 \subsection{Method \code{evaluate()}}{
+Evaluate the descriptor by sampling new points from the box.
+
+Draws new points from the descriptor box and evaluates them using
+`evaluate_box()`.
+The returned measures summarize:
+\itemize{
+  \item `impurity`: fraction of sampled points with predictions outside `desired_range`,
+  \item `dist`: mean absolute distance between sampled predictions and the
+  prediction for `x_interest`.
+}
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDesc$evaluate(n_samples = 100)}\if{html}{\out{</div>}}
 }
@@ -179,29 +219,30 @@ Estimates coverage and precision by drawing `n_samples` points (via
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{n_samples}}{(`integer(1)`) Number of samples used for evaluation (default 100).}
+\item{\code{n_samples}}{(`integer(1)`) \cr
+Number of samples used for evaluation. Default is `100`.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-A named numeric vector with evaluation metrics (as returned by `evaluate_box()`).
-Evaluate the descriptor on the training data.
-
-Computes coverage as the fraction of training points inside the box, and
-precision as the fraction of in-box points whose predictions fall within
-`desired_range`.
+A named numeric vector with entries `impurity` and `dist`.
 }
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-RegDesc-evaluate_train"></a>}}
 \if{latex}{\out{\hypertarget{method-RegDesc-evaluate_train}{}}}
 \subsection{Method \code{evaluate_train()}}{
+Evaluate the descriptor on the training data.
+
+Coverage is computed as the fraction of training points inside the box.
+Precision is computed as the fraction of in-box points whose predictions
+fall within `desired_range`.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDesc$evaluate_train()}\if{html}{\out{</div>}}
 }
 
 \subsection{Returns}{
-A named numeric vector with `precision` and `coverage`.
+A named numeric vector with entries `precision` and `coverage`.
 }
 }
 \if{html}{\out{<hr>}}

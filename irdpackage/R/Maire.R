@@ -3,45 +3,89 @@
 
 #' Maire
 #'
+#' @description
+#' Regional descriptor method based on MAIRE (Model-Agnostic Interpretable
+#' Rule Extraction), adapted to search for interpretable regional descriptors
+#' (IRDs).
+#'
+#' MAIRE is a bottom-up method: it starts from a very small box around
+#' `x_interest` and expands the box boundaries by gradient-based optimization.
+#' In this package, the method is used to search for a box with high coverage
+#' while keeping predictions within the desired range and ensuring that
+#' `x_interest` remains inside the box. The original MAIRE approach is discussed
+#' in Sharma et al. (2021), and its adaptation to IRDs is described in the IRD
+#' paper.
+#'
+#' @references
+#' Sharma, R., Reddy, N., Kamakshi, V., Krishnan, N. C., & Jain, S. (2021).
+#' MAIRE - a model-agnostic interpretable rule extraction procedure for
+#' explaining classifiers.
+#' In Machine Learning and Knowledge Extraction, Lecture Notes in Computer
+#' Science, 12844, 329--349.
+#' \url{https://link.springer.com/chapter/10.1007/978-3-030-84060-0_21}
+#'
+#' Dandl, S., Casalicchio, G., Bischl, B., & Bothmann, L. (2023).
+#' Interpretable Regional Descriptors: Hyperbox-Based Local Explanations.
+#' \url{https://arxiv.org/abs/2305.02780}
+#'
 #' @export
 Maire = R6::R6Class("Maire",
   inherit = RegDescMethod,
   public = list(
+    #' @description
+    #' Creates a new `Maire` object.
+    #'
     #' @param predictor (`iml::Predictor`) \cr
-    #' The object (created with `iml::Predictor$new()`) holding the machine
-    #' learning model and the data.
-    #' @param num_of_iterations (`integer(1)`) \cr Number of iterations for ADAM optimizer.
-    #' Default is 10000.
-    #' @param convergence (`logical(1)`) \cr Whether `num_of_iterations` is conducted after
-    #' first convergence, i.e., after precision fell below 1 for the first time
-    #' @param strategy (`character(1)`)\cr
-    #' Either `traindata` using training data or `sampled` using newly sampled data in
-    #' ICE curve identified box.
-    #' @param num_sampled_points (`numeric(1)`)\cr Only considered if `strategy = 'sampled'`.
-    #' The number of samples randomly drawn at the beginning.
-    #' @param lambda_val_1 (`numeric(1)`) \cr Weight for precision term (in contrast to coverage),
-    #' default is 20.
-    #' @param lambda_val (`numeric(1)`) \cr Weight for constraint that point to explain
-    #' must be contained in box, default 100.
-    #' @param threshold  (`numeric(1)`) \cr Lower threshold for precision default 0.9999999.
-    #' @param c1 (`numeric(1)`) \cr Parameter for approximation of indicator function,
-    #' should be rather low such that indicator approx has only a small value range (default 0.4).
-    #' @param c2 (`numeric(1)`) \cr Parameter for approximation of indicator function,
-    #' should be rather high such that there is a steep increase in the indicator approx (default 15).
-    #' @param c3 (`numeric(1)`) \cr Parameter for approximation of indicator function,
-    #' chosen to provide a step at z = 0 (default 0.6).
-    #' @param c4 (`numeric(1)`) \cr Parameter for approximation of indicator function,
-    #' chosen such that signum term for approximation is close to 1 (default 0.5).
-    #' @param c5 (`numeric(1)`) \cr Parameter for approximation of indicator function,
-    #' chosen such that signum term for approximation is close to 1 (default 0.6).
-    #' @param cl (`numeric(1)`) \cr Parameter for approximation of indicator function,
-    #' should have a value close to 0 (default 0.02).
-    #' @param ch (`numeric(1)`) \cr Parameter for approximation of indicator function,
-    #' should have a value close to 1 (default 0.82)
-    #' @param quiet (`logical(1)`) Supress messages.
+    #'   The object (created with `iml::Predictor$new()`) holding the machine
+    #'   learning model and the data.
+    #' @param num_of_iterations (`integer(1)`) \cr
+    #'   Maximum number of optimization iterations. Default is `1000`.
+    #' @param convergence (`logical(1)`) \cr
+    #'   Whether `num_of_iterations` should be counted only after the precision
+    #'   threshold has been violated for the first time.
+    #'   This is used as a convergence-style stopping rule.
+    #' @param strategy (`character(1)`) \cr
+    #'   Data source used during optimization.
+    #'   `"traindata"` uses the available training data.
+    #'   `"sampled"` uses newly sampled points from the largest local box around
+    #'   `x_interest`.
+    #' @param num_sampled_points (`numeric(1)`) \cr
+    #'   Number of sampled points used when `strategy = "sampled"`.
+    #' @param lambda_val_1 (`numeric(1)`) \cr
+    #'   Weight of the precision term in the loss function relative to coverage.
+    #'   Larger values penalize imprecise boxes more strongly.
+    #' @param lambda_val (`numeric(1)`) \cr
+    #'   Weight of the locality constraint ensuring that `x_interest` stays
+    #'   inside the box.
+    #' @param threshold (`numeric(1)`) \cr
+    #'   Minimum acceptable precision level used during optimization.
+    #'   Default is `0.9999999`.
+    #' @param c1 (`numeric(1)`) \cr
+    #'   Shape parameter used in the smooth approximation of indicator functions.
+    #' @param c2 (`numeric(1)`) \cr
+    #'   Shape parameter controlling the steepness of the approximation.
+    #' @param c3 (`numeric(1)`) \cr
+    #'   Shape parameter used in the indicator approximation.
+    #' @param c4 (`numeric(1)`) \cr
+    #'   Shape parameter used in the indicator approximation.
+    #' @param c5 (`numeric(1)`) \cr
+    #'   Shape parameter used in the indicator approximation.
+    #' @param cl (`numeric(1)`) \cr
+    #'   Lower offset parameter used in the approximation.
+    #' @param ch (`numeric(1)`) \cr
+    #'   Upper threshold parameter used in the approximation.
+    #' @param quiet (`logical(1)`) \cr
+    #'   Should progress messages be suppressed?
+    #'
+    #' @details
+    #' MAIRE relies on a differentiable approximation of box membership and
+    #' optimizes box boundaries with ADAM in a transformed feature space.
+    #' Continuous features are scaled, and categorical features are transformed
+    #' internally before optimization.
+    #'
+    #' @return A \link{RegDesc} object.
     #' @importFrom keras k_placeholder
     #' @import tensorflow
-    #' @return (RegDesc) Hyperbox
     initialize = function(predictor,
                           num_of_iterations = 1000L,
                           convergence = FALSE,

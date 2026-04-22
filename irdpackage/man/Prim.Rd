@@ -4,9 +4,24 @@
 \alias{Prim}
 \title{PRIM}
 \description{
-PRIM
+Regional descriptor method based on PRIM (Patient Rule Induction Method),
+adapted to search for interpretable regional descriptors (IRDs).
 
-PRIM
+The method starts from a large box around `x_interest`, then iteratively
+peels away regions to improve purity and pastes back regions as long as the
+resulting box remains homogeneous. In this package, PRIM is adapted to return
+a box that contains `x_interest` and aims for high coverage under full
+precision.
+}
+\references{
+Friedman, J. H., & Fisher, N. I. (1999).
+Bump hunting in high-dimensional data.
+*Statistics and Computing*, 9(2), 123–143.
+\url{https://link.springer.com/article/10.1023/A:1008894516817}
+
+Dandl, S., Casalicchio, G., Bischl, B., & Bothmann, L. (2023).
+Interpretable Regional Descriptors: Hyperbox-Based Local Explanations.
+\url{https://arxiv.org/abs/2305.02780}
 }
 \section{Super class}{
 \code{\link[irdpackage:RegDescMethod]{irdpackage::RegDescMethod}} -> \code{Prim}
@@ -31,6 +46,7 @@ PRIM
 \if{html}{\out{<a id="method-Prim-new"></a>}}
 \if{latex}{\out{\hypertarget{method-Prim-new}{}}}
 \subsection{Method \code{new()}}{
+Creates a new `Prim` object.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Prim$new(
   predictor,
@@ -48,24 +64,31 @@ PRIM
 The object (created with `iml::Predictor$new()`) holding the machine
 learning model and the data.}
 
-\item{\code{subbox_relsize}}{(`numeric(1)`) \cr Number of proposed values
-to search over for numeric features. If increased, more upper and lower values are
-inspected. Default = 0.05 meaning that each subbox covers 5 % of the data points in
-a box.}
+\item{\code{subbox_relsize}}{(`numeric(1)`) \cr
+Relative size used to define candidate subboxes during peeling and
+pasting.
+For numeric features, it determines the quantiles used for candidate
+splits (peeling) and the number of observations added (pasting).
+Smaller values lead to smaller candidate changes and larger values lead
+to coarser steps.
+Default is `0.05`.}
 
-\item{\code{strategy}}{(`character(1)`)\cr
-Either `traindata` using training data or `sampled` using newly sampled data in
-ICE curve identified box.}
+\item{\code{strategy}}{(`character(1)`) \cr
+Data source used during the search.
+`"traindata"` uses the available training data.
+`"sampled"` uses newly sampled points from the largest local box around
+`x_interest`.}
 
-\item{\code{num_sampled_points}}{(`numeric(1)`)\cr Only considered if `strategy = 'sampled'`.
-The number of samples randomly drawn at the beginning.}
+\item{\code{num_sampled_points}}{(`numeric(1)`) \cr
+Number of sampled points used when `strategy = "sampled"`.}
 
-\item{\code{quiet}}{(`logical(1)`) Supress messages.}
+\item{\code{quiet}}{(`logical(1)`) \cr
+Should progress messages be suppressed?}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-(RegDesc) Hyperbox
+A \link{RegDesc} object.
 }
 }
 \if{html}{\out{<hr>}}

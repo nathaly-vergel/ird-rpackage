@@ -1,7 +1,9 @@
 #' Base Class for Regional Descriptor Methods
 #'
 #' @description
-#' Abstract base class for regional descriptors methods.
+#' Abstract base class for regional descriptor methods.
+#' These methods aim to find a hyperbox (region in feature space) around
+#' an observation such that all points inside the box yield similar predictions.
 #'
 #' @section Inheritance:
 #' Child classes: \link{Prim}, \link{Maire}, \link{MaxBox}, \link{PostProcessing}
@@ -13,7 +15,8 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     #' @param predictor (\link[iml]{Predictor})\cr
     #'   The object (created with `iml::Predictor$new()`) holding the machine
     #'   learning model and the data.
-    #' @param quiet (`logical(1)`)\cr Should information about the optimization status be hidden? Default is FALSE.
+    #' @param quiet (`logical(1)`)\cr
+    #'   Should information about the optimization status be hidden? Default is FALSE.
     initialize = function(predictor, quiet = FALSE) {
       checkmate::assert_class(predictor, "Predictor")
 
@@ -31,39 +34,59 @@ RegDescMethod = R6::R6Class("RegDescMethod",
 
     #' @description
     #' Prints a `RegDescMethod` object.
-    #' The method calls a (private) `$print_parameters()` method which should be implemented by the leaf classes.
+    #' The method calls a (private) `$print_parameters()` method which should be
+    #' implemented by the leaf classes.
     print = function() {
       cat("Regional descriptor method: ", class(self)[1], "\n")
       cat("Parameters:\n")
       private$print_parameters()
     },
     #' @description
-    #' Returns the method hyperparameters as a named list. Needs to be defined in the leaf classes.
+    #' Returns the method hyperparameters as a named list.
+    #' Needs to be defined in the leaf classes.
     get_parameters = function() {
       private$.get_parameters()
     },
     #' @description
-    #' Runs the hyperrectangle searching algorithm and returns the hyperrectangles interval ranges.
-    #' All observations in the hyperrectangle should have a predicted probability in the interval `desired_prob`
-    #' (for classification for a `desired_class`).
+    #' Runs the regional descriptor search and returns a hyperbox.
+    #' The resulting box describes a region around `x_interest` where
+    #' the model prediction stays within `desired_range`.
     #'
-    #' @param x_interest (`data.table(1) | data.frame(1)`) \cr A single row with the observation of interest.
+    #' @details
+    #' The goal is to find a box with:
+    #' \itemize{
+    #'   \item high coverage (large region)
+    #'   \item perfect precision (all predictions inside the desired range)
+    #'   \item locality (the box contains `x_interest`)
+    #' }
+    #'
+    #' @param x_interest (`data.table(1)` | `data.frame(1)`) \cr
+    #'   A single observation to be explained.
     #' @param desired_range (`numeric(2)`) \cr
-    #'   The desired predicted outcome range - a vector with two numeric values
-    #'   that specify an outcome interval.
-    #'   For regression the interval operates on the numeric prediction.
-    #'   For classification it refers to the predicted probability of
-    #'   `desired_class` and must lie in the interval [0, 1].
-    #' @param desired_class (`character(1)` | `NULL`) \cr The desired class. Ignored if predictor$task = "regression".
-    #' If NULL (default) for a classification task then predictor$class is taken.
-    #' @param obsdata (`data.table` | `data.frame`) \cr Data set used to find the box. If NULL (default) either
-    #' predictor$data or newly sampled data according to the specified `strategy` is used.
+    #'   Interval defining acceptable model predictions.
+    #'   For regression, this is a numeric interval around the prediction.
+    #'   For classification, this refers to the predicted probability of
+    #'   `desired_class` and must lie in [0, 1].
+    #' @param desired_class (`character(1)` | `NULL`) \cr
+    #'   Target class of interest (classification only).
+    #'   If `NULL`, `predictor$class` is used.
+    #' @param obsdata (`data.table` | `data.frame`) \cr
+    #'   Data used to evaluate candidate boxes. If `NULL`, either training
+    #'   data or sampled data (depending on the method) is used.
     #' @param fixed_features (`character()` | `NULL`) \cr
-    #' Names of features that are not allowed to be changed. NULL (default) allows all features to be changed.
-    #' @param box_largest (`ParamSet`  | `NULL`) \cr
-    #' Largest initial box. If NULL, largest box is generated.
-    #' @param box_init (`ParamSet` | `NULL`) \cr Initial box to process. Ignored if method is not `PostProcessing`.
-    #
+    #'   Features that must remain fixed (i.e., not allowed to change).
+    #' @param box_largest (`ParamSet` | `NULL`) \cr
+    #'   Optional restriction of the search space (largest admissible box).
+    #' @param box_init (`ParamSet` | `NULL`) \cr
+    #'   Initial box to start from (used only in `PostProcessing`).
+    #'
+    #' @return A \link{RegDesc} object containing:
+    #' \itemize{
+    #'   \item the resulting hyperbox,
+    #'   \item the observation of interest,
+    #'   \item the prediction interval,
+    #'   \item metadata such as number of model calls and optimization history.
+    #' }
     find_box = function(x_interest, desired_range = NULL, obsdata = NULL, fixed_features = NULL, desired_class = NULL, box_largest = NULL, box_init = NULL) {
 
       # Checks x_interest
@@ -142,7 +165,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
           stop("`$history` is read only", call. = FALSE)
         }
       },
-      #' @field calls_fhat (`integer(1)`)
+      #' @field calls_fhat (`integer(1)`) \cr
       #'  Number of model prediction calls performed during the search procedure.
       #'  Read-only.
       calls_fhat = function(value) {

@@ -4,7 +4,9 @@
 \alias{RegDescMethod}
 \title{Base Class for Regional Descriptor Methods}
 \description{
-Abstract base class for regional descriptors methods.
+Abstract base class for regional descriptor methods.
+These methods aim to find a hyperbox (region in feature space) around
+an observation such that all points inside the box yield similar predictions.
 }
 \section{Inheritance}{
 
@@ -18,7 +20,7 @@ Child classes: \link{Prim}, \link{Maire}, \link{MaxBox}, \link{PostProcessing}
 stores for each iteration of the method the chosen variable, boundary
 value and evaluation measures.}
 
-\item{\code{calls_fhat}}{(`integer(1)`)
+\item{\code{calls_fhat}}{(`integer(1)`) \cr
 Number of model prediction calls performed during the search procedure.
 Read-only.}
 }
@@ -50,7 +52,8 @@ Creates a new `RegDescMethod` object.
 The object (created with `iml::Predictor$new()`) holding the machine
 learning model and the data.}
 
-\item{\code{quiet}}{(`logical(1)`)\cr Should information about the optimization status be hidden? Default is FALSE.}
+\item{\code{quiet}}{(`logical(1)`)\cr
+Should information about the optimization status be hidden? Default is FALSE.}
 }
 \if{html}{\out{</div>}}
 }
@@ -60,7 +63,8 @@ learning model and the data.}
 \if{latex}{\out{\hypertarget{method-RegDescMethod-print}{}}}
 \subsection{Method \code{print()}}{
 Prints a `RegDescMethod` object.
-The method calls a (private) `$print_parameters()` method which should be implemented by the leaf classes.
+The method calls a (private) `$print_parameters()` method which should be
+implemented by the leaf classes.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDescMethod$print()}\if{html}{\out{</div>}}
 }
@@ -70,7 +74,8 @@ The method calls a (private) `$print_parameters()` method which should be implem
 \if{html}{\out{<a id="method-RegDescMethod-get_parameters"></a>}}
 \if{latex}{\out{\hypertarget{method-RegDescMethod-get_parameters}{}}}
 \subsection{Method \code{get_parameters()}}{
-Returns the method hyperparameters as a named list. Needs to be defined in the leaf classes.
+Returns the method hyperparameters as a named list.
+Needs to be defined in the leaf classes.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDescMethod$get_parameters()}\if{html}{\out{</div>}}
 }
@@ -80,9 +85,9 @@ Returns the method hyperparameters as a named list. Needs to be defined in the l
 \if{html}{\out{<a id="method-RegDescMethod-find_box"></a>}}
 \if{latex}{\out{\hypertarget{method-RegDescMethod-find_box}{}}}
 \subsection{Method \code{find_box()}}{
-Runs the hyperrectangle searching algorithm and returns the hyperrectangles interval ranges.
-All observations in the hyperrectangle should have a predicted probability in the interval `desired_prob`
-(for classification for a `desired_class`).
+Runs the regional descriptor search and returns a hyperbox.
+The resulting box describes a region around `x_interest` where
+the model prediction stays within `desired_range`.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDescMethod$find_box(
   x_interest,
@@ -98,30 +103,51 @@ All observations in the hyperrectangle should have a predicted probability in th
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{x_interest}}{(`data.table(1) | data.frame(1)`) \cr A single row with the observation of interest.}
+\item{\code{x_interest}}{(`data.table(1)` | `data.frame(1)`) \cr
+A single observation to be explained.}
 
 \item{\code{desired_range}}{(`numeric(2)`) \cr
-The desired predicted outcome range - a vector with two numeric values
-that specify an outcome interval.
-For regression the interval operates on the numeric prediction.
-For classification it refers to the predicted probability of
-`desired_class` and must lie in the interval [0, 1].}
+Interval defining acceptable model predictions.
+For regression, this is a numeric interval around the prediction.
+For classification, this refers to the predicted probability of
+`desired_class` and must lie in [0, 1].}
 
-\item{\code{obsdata}}{(`data.table` | `data.frame`) \cr Data set used to find the box. If NULL (default) either
-predictor$data or newly sampled data according to the specified `strategy` is used.}
+\item{\code{obsdata}}{(`data.table` | `data.frame`) \cr
+Data used to evaluate candidate boxes. If `NULL`, either training
+data or sampled data (depending on the method) is used.}
 
 \item{\code{fixed_features}}{(`character()` | `NULL`) \cr
-Names of features that are not allowed to be changed. NULL (default) allows all features to be changed.}
+Features that must remain fixed (i.e., not allowed to change).}
 
-\item{\code{desired_class}}{(`character(1)` | `NULL`) \cr The desired class. Ignored if predictor$task = "regression".
-If NULL (default) for a classification task then predictor$class is taken.}
+\item{\code{desired_class}}{(`character(1)` | `NULL`) \cr
+Target class of interest (classification only).
+If `NULL`, `predictor$class` is used.}
 
-\item{\code{box_largest}}{(`ParamSet`  | `NULL`) \cr
-Largest initial box. If NULL, largest box is generated.}
+\item{\code{box_largest}}{(`ParamSet` | `NULL`) \cr
+Optional restriction of the search space (largest admissible box).}
 
-\item{\code{box_init}}{(`ParamSet` | `NULL`) \cr Initial box to process. Ignored if method is not `PostProcessing`.}
+\item{\code{box_init}}{(`ParamSet` | `NULL`) \cr
+Initial box to start from (used only in `PostProcessing`).}
 }
 \if{html}{\out{</div>}}
+}
+\subsection{Details}{
+The goal is to find a box with:
+\itemize{
+  \item high coverage (large region)
+  \item perfect precision (all predictions inside the desired range)
+  \item locality (the box contains `x_interest`)
+}
+}
+
+\subsection{Returns}{
+A \link{RegDesc} object containing:
+\itemize{
+  \item the resulting hyperbox,
+  \item the observation of interest,
+  \item the prediction interval,
+  \item metadata such as number of model calls and optimization history.
+}
 }
 }
 \if{html}{\out{<hr>}}
