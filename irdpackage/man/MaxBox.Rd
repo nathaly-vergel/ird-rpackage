@@ -4,7 +4,24 @@
 \alias{MaxBox}
 \title{MaxBox}
 \description{
-Maximum Box approach of Eckstein.
+Regional descriptor method based on the Maximum Box approach of
+Eckstein et al. (2002), adapted to search for interpretable regional
+descriptors (IRDs).
+
+The method starts from a box covering admissible data around `x_interest`
+and uses a branch-and-bound search to find a large homogeneous box.
+In this package, the original approach is extended so that the returned
+box also contains `x_interest`.
+}
+\references{
+Eckstein, J., Hammer, P. L., Liu, Y., Nediak, M., & Simeone, B. (2002).
+The maximum box problem and its application to data analysis.
+*Computational Optimization and Applications*, 23(3), 285-298.
+\url{https://link.springer.com/article/10.1023/A:1020546910706}
+
+Dandl, S., Casalicchio, G., Bischl, B., & Bothmann, L. (2023).
+Interpretable Regional Descriptors: Hyperbox-Based Local Explanations.
+\url{https://arxiv.org/abs/2305.02780}
 }
 \section{Super class}{
 \code{\link[irdpackage:RegDescMethod]{irdpackage::RegDescMethod}} -> \code{MaxBox}
@@ -29,6 +46,7 @@ Maximum Box approach of Eckstein.
 \if{html}{\out{<a id="method-MaxBox-new"></a>}}
 \if{latex}{\out{\hypertarget{method-MaxBox-new}{}}}
 \subsection{Method \code{new()}}{
+Creates a new `MaxBox` object.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{MaxBox$new(
   predictor,
@@ -42,26 +60,31 @@ Maximum Box approach of Eckstein.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{predictor}}{(\link[iml]{Predictor})\cr
+\item{\code{predictor}}{(\link[iml]{Predictor}) \cr
 The object (created with `iml::Predictor$new()`) holding the machine
 learning model and the data.}
 
-\item{\code{strategy}}{(`character(1)`)\cr
-Either `traindata` using training data or `sampled` using newly sampled data in
-ICE curve identified box.}
+\item{\code{strategy}}{(`character(1)`) \cr
+Data source used during the search.
+`"traindata"` uses the available training data.
+`"sampled"` uses newly sampled points from the largest local box around
+`x_interest`.}
 
-\item{\code{num_sampled_points}}{(`numeric(1)`)\cr Only considered if `strategy = 'sampled'`.
-The number of samples randomly drawn at the beginning.}
+\item{\code{num_sampled_points}}{(`numeric(1)`) \cr
+Number of sampled points used when `strategy = "sampled"`.}
 
-\item{\code{efficient}}{(`logical(1)`)\cr Whether the efficient computation
-proposed by Eckstein et al. should be used. Default TRUE.}
+\item{\code{efficient}}{(`logical(1)`) \cr
+Whether to use the more efficient bound computation described in the
+MaxBox approach. Default is `TRUE`.}
 
-\item{\code{quiet}}{(`logical(1)`)\cr Should information about the optimization status be hidden? Default is FALSE.}
+\item{\code{quiet}}{(`logical(1)`) \cr
+Should information about the optimization status be hidden?
+Default is `FALSE`.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-(RegDesc) Hyperbox
+A \link{RegDesc} object.
 }
 }
 \if{html}{\out{<hr>}}
