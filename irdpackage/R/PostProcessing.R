@@ -1,26 +1,75 @@
 #' PostProcessing
 #'
-#' @description Proposed post-processing method
+#' @description
+#' Post-processing method for improving an existing regional descriptor.
+#'
+#' Using newly sampled points, the method takes an initial box and then
+#' refines its boundaries in two phases:
+#' \itemize{
+#'   \item Peeling: removes impure boundary regions if sampled points
+#'   inside those regions fall outside `desired_range`.
+#'   \item Pasting: enlarges the box again by adding boundary regions
+#'   that remain homogeneous.
+#' }
+#'
+#' This procedure is intended to correct suboptimal box boundaries that can arise
+#' when the original descriptor was derived from a finite dataset only.
+#' It corresponds to the post-processing approach proposed in the IRD paper.
+#'
+#' @references
+#' Dandl, S., Casalicchio, G., Bischl, B., & Bothmann, L. (2023).
+#' Interpretable Regional Descriptors: Hyperbox-Based Local Explanations.
+#' \url{https://arxiv.org/abs/2305.02780}
 #'
 #' @export
 PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
   public = list(
+    #' @description
+    #' Creates a new `PostProcessing` object.
+    #'
     #' @param predictor (`iml::Predictor`) \cr
-    #' The object (created with `iml::Predictor$new()`) holding the machine
-    #' learning model and the data.
-    #' @param subbox_relsize (`numeric(1)`) \cr Number of proposed values
-    #' to search over for numeric features. If increased, more upper and lower values are
-    #' inspected. Default = 30 meaning that each subbox covers 1/30 = 3.3 % of whole observed
-    #' feature range.
-    #' @param evaluation_n (`numeric(1)`) \cr The number of samples randomly drawn for a specific subbox in order to evaluate this box.
-    #' @param paste_alpha (NULL | `numeric(1)`)  Stopping criterion. Minimum fraction of box
-    #' allowed for adding. See `Details`.
-    #' @param strategy_ties (`character(1)`) \cr Strategy to use if
-    #'  multiple subboxes have 0 impurity in order to break ties. Options are
-    #'  `'random'` to choose randomly, `'preddist'` to choose box with lowest average
-    #'  distance to prediction of `x_interest`. Default is `'preddist'`.
-    #' @param quiet (`logical(1)`) Supress messages.
-    #' @return (RegDesc) Hyperbox
+    #'   The object (created with `iml::Predictor$new()`) holding the machine
+    #'   learning model and the data.
+    #' @param subbox_relsize (`numeric(1)`) \cr
+    #'   Relative size of candidate boundary regions considered during peeling
+    #'   and pasting.
+    #'   For numeric features, this determines the step size used to shrink or
+    #'   expand the box.
+    #'   Smaller values lead to finer adjustments; larger values lead to coarser
+    #'   changes.
+    #'   Default is `0.05`.
+    #' @param evaluation_n (`numeric(1)`) \cr
+    #'   Number of newly sampled points used to evaluate each candidate box or
+    #'   subbox.
+    #'   Larger values give more stable estimates of impurity and prediction
+    #'   distance but increase computation time.
+    #' @param paste_alpha (`numeric(1)`) \cr
+    #'   Minimum relative step size allowed during the pasting phase.
+    #'   If no homogeneous expansion can be found, the current pasting step size
+    #'   is halved repeatedly until it drops below this threshold.
+    #'   This acts as a stopping criterion for pasting.
+    #' @param strategy_ties (`character(1)`) \cr
+    #'   Strategy used to break ties between candidate subboxes.
+    #'   `"random"` selects one of the best candidates at random.
+    #'   `"preddist"` prefers candidates with smaller average prediction
+    #'   distance to the prediction of `x_interest`.
+    #' @param quiet (`logical(1)`) \cr
+    #'   Should progress messages be suppressed?
+    #'
+    #' @details
+    #' `PostProcessing` is applied to an already existing descriptor and therefore
+    #' requires `box_init` when calling `$find_box()`.
+    #'
+    #' The method first checks whether the initial box is homogeneous using newly
+    #' sampled points. If not, it peels away boundary regions that are most
+    #' strongly associated with impurity. It then tries to enlarge the refined box
+    #' again by adding candidate regions that remain homogeneous.
+    #'
+    #' In the paper, this procedure is motivated by the fact that a descriptor
+    #' found from finite observed data may still include unseen impure regions or
+    #' may miss adjacent admissible regions.
+    #'
+    #' @return A \link{RegDesc} object.
     initialize = function(predictor,
                           subbox_relsize = 0.05,
                           evaluation_n = 1000,
