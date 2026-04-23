@@ -2,12 +2,12 @@ make_param_set = function(dt, subset = NULL) {
   if (anyNA(dt)) {
     warning("Missing values detected in the training dataset. Numeric bounds and categorical levels are computed ignoring NA values.")
   }
-  param_list = lapply(names(dt), function(col_name){
+  param_list = lapply(names(dt), function(col_name) {
     column = dt[[col_name]]
     if (is.numeric(column)) {
       lb = if (col_name %in% names(subset) && !is.na(subset[[col_name]][1])) subset[[col_name]][1] else min(column, na.rm = TRUE)
       ub = if (col_name %in% names(subset) && !is.na(subset[[col_name]][2])) subset[[col_name]][2] else max(column, na.rm = TRUE)
-      if (is.double(column)){
+      if (is.double(column)) {
         param = paradox::p_dbl(lower = lb, upper = ub)
       } else if (is.integer(column)) {
         param = paradox::p_int(lower = lb, upper = ub)
@@ -32,7 +32,7 @@ make_param_set = function(dt, subset = NULL) {
     factor_cols = names(which(sapply(predictor$data$X, is.factor)))
     for (factor_col in factor_cols) {
       fact_col_pred = predictor$data$X[[factor_col]]
-      value =  factor(x[[factor_col]], levels = levels(fact_col_pred), ordered = is.ordered(fact_col_pred))
+      value = factor(x[[factor_col]], levels = levels(fact_col_pred), ordered = is.ordered(fact_col_pred))
       data.table::set(x, j = factor_col, value = value)
     }
     return(x)
@@ -40,7 +40,12 @@ make_param_set = function(dt, subset = NULL) {
   return(ps)
 }
 
-update_box_old_correct = function(current_box, j, lower = NULL, upper = NULL, val = NULL, complement = TRUE) {
+update_box_old_correct = function(current_box,
+                                  j,
+                                  lower = NULL,
+                                  upper = NULL,
+                                  val = NULL,
+                                  complement = TRUE) {
   # normalize j to an id -> now feature name (zB j = "age")
   ids = current_box$ids()
   if (is.numeric(j)) {
@@ -48,7 +53,7 @@ update_box_old_correct = function(current_box, j, lower = NULL, upper = NULL, va
   }
 
   domains = current_box$domains
-  dom_old = domains[[j]]   # domain from feature to update
+  dom_old = domains[[j]] # domain from feature to update
   cls = current_box$class[[j]] # feature's type
 
   if (cls %in% c("ParamInt", "ParamDbl")) {
@@ -98,7 +103,12 @@ update_box_old_correct = function(current_box, j, lower = NULL, upper = NULL, va
   return(new_box)
 }
 
-update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, complement = TRUE) {
+update_box = function(current_box,
+                      j,
+                      lower = NULL,
+                      upper = NULL,
+                      val = NULL,
+                      complement = TRUE) {
   ids = current_box$ids()
   if (is.numeric(j)) {
     j = ids[[as.integer(j)]]
@@ -152,7 +162,12 @@ update_box = function(current_box, j, lower = NULL, upper = NULL, val = NULL, co
   return(box)
 }
 
-evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, strategy = "random") {
+evaluate_box = function(box,
+                        x_interest,
+                        predictor,
+                        n_samples,
+                        desired_range,
+                        strategy = "random") {
   yhat_interest = predictor$predict(x_interest)[[1]]
   ## generate new data
   if (strategy == "random") {
@@ -166,7 +181,7 @@ evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, st
     val = data.frame(rbind(low, up))
     vall = as.list(val)
     lev = box$levels
-    lev[sapply(lev, is.null)] <- NULL
+    lev[sapply(lev, is.null)] = NULL
     l = c(lev, vall)
     dt = data.table(expand.grid(l))
     dt = box$extra_trafo(x = dt, predictor = predictor)
@@ -175,7 +190,7 @@ evaluate_box = function(box, x_interest, predictor, n_samples, desired_range, st
   ## reuse generated one
   # private$check_in_box()
   # evaluate according to impurity --> lower better
-  #impurity = nrow(dt[!pred %between% desired_range])/n_samples # Uses NSE
+  # impurity = nrow(dt[!pred %between% desired_range])/n_samples # Uses NSE
   impurity = nrow(dt[!(dt[["pred"]] %between% desired_range)]) / nrow(dt)
   # evaluate according to distance to pred --> lower better
   dist = mean(abs(dt$pred - yhat_interest))
@@ -383,7 +398,7 @@ make_surface_plot = function(box,
     if (surface == "prediction") {
       p = p + ggplot2::scale_fill_gradient(
         name = "Prediction"
-        )
+      )
     } else if (surface == "range") {
       p = p + ggplot2::scale_fill_manual(
         name = "Prediction in Y'",
@@ -461,7 +476,11 @@ predict_range = function(predictor, newdata, range) {
 #' @return A list with elements \code{expldata} and \code{explx_interest}.
 #'
 #' @keywords internal
-transform_for_explanation = function(data, predictor, x_interest, version = 2, frac = 0.0001) {
+transform_for_explanation = function(data,
+                                     predictor,
+                                     x_interest,
+                                     version = 2,
+                                     frac = 0.0001) {
   data = rbind(x_interest, data)
   expldata = data.table()
   categorylist = list()
@@ -478,7 +497,7 @@ transform_for_explanation = function(data, predictor, x_interest, version = 2, f
         } else {
           if (length(unique(fcol)) != 1) {
             # one-hot encoding
-            fcol = data.table(model.matrix(~0+fcol))
+            fcol = data.table(model.matrix(~ 0 + fcol))
           } else {
             fcol = data.table(rep(1, nrow(data)))
           }
@@ -486,23 +505,23 @@ transform_for_explanation = function(data, predictor, x_interest, version = 2, f
         }
         # set to 0.66 vs. 0.33 (0.66)
         if (version == 3) {
-         fcol = data.table(ifelse(fcol == 1, 2/3, 1/3))
-         if (nrow(fcol) == 1 & nrow(fcol) < nrow(data)) {
-           fcol = rbindlist(replicate(n = nrow(data), expr = fcol, simplify = FALSE))
-         }
+          fcol = data.table(ifelse(fcol == 1, 2 / 3, 1 / 3))
+          if (nrow(fcol) == 1 & nrow(fcol) < nrow(data)) {
+            fcol = rbindlist(replicate(n = nrow(data), expr = fcol, simplify = FALSE))
+          }
         }
       } else if (version == 1) {
         ## maire version: allows either class of x_interest or all
         fcol = data.table(ifelse(fcol == fcol[1], 0.66, 0.33))
         if (nrow(fcol) == 1 & nrow(fcol) < nrow(data)) {
-           fcol = rbindlist(replicate(n = nrow(data), expr = fcol, simplify = FALSE))
-         }
+          fcol = rbindlist(replicate(n = nrow(data), expr = fcol, simplify = FALSE))
+        }
         names(fcol) = fnam
       }
     } else {
       if (predictor$data$feature.types[fnam] == "categorical") {
         if (!is.factor(fcol)) {
-          fcol =  factor(fcol)
+          fcol = factor(fcol)
         }
         categorylist[[fnam]] = levels(fcol)
         fcol = as.numeric(fcol)
@@ -512,7 +531,7 @@ transform_for_explanation = function(data, predictor, x_interest, version = 2, f
         if (var(fcol) == 0) {
           fcol = data.table(rep(0.5, nrow(data)))
         } else {
-          fcol =  data.table((fcol - min(fcol)) / (max(fcol) - min(fcol)) * (1 - 2*frac) + frac)
+          fcol = data.table((fcol - min(fcol)) / (max(fcol) - min(fcol)) * (1 - 2 * frac) + frac)
         }
       } else {
         fcol = data.table(fcol)
@@ -521,13 +540,13 @@ transform_for_explanation = function(data, predictor, x_interest, version = 2, f
     }
     expldata = cbind(expldata, fcol)
   }
-  res = list(expldata = expldata[-1L,], explx_interest = expldata[1L,])
+  res = list(expldata = expldata[-1L, ], explx_interest = expldata[1L, ])
   attr(res, "categorylist") = categorylist
   return(res)
 }
 
-get_max_box = function (x_interest, fixed_features, predictor, param_set, desired_range, resolution = 500L) {
-  pred = dist = NULL  # added to silence NOTE from data.table NSE in R CMD check
+get_max_box = function(x_interest, fixed_features, predictor, param_set, desired_range, resolution = 500L) {
+  pred = dist = NULL # added to silence NOTE from data.table NSE in R CMD check
   # <FIXME:> is 500L a good default??
   luval = lapply(predictor$data$feature.names, function(i_name) {
     val_name = x_interest[[i_name]]
@@ -537,13 +556,13 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
         return(val_name)
       } else { # if age is fixed to 27
         return(c(val_name, val_name)) # c(27, 27)
-        }
+      }
     }
     ps_sub = param_set$clone(deep = TRUE)
     ps_sub = ps_sub$subset(i_name)
     grid1d = paradox::generate_design_grid(ps_sub, resolution = resolution)$data
     x_interest_sub = data.table::copy(x_interest)
-    x_interest_sub[, (i_name):=NULL]
+    x_interest_sub[, (i_name) := NULL]
     dt = data.table::data.table(grid1d, x_interest_sub)
     dt = param_set$extra_trafo(x = dt, predictor = predictor)
     dt[, "pred"] = predictor$predict(dt)
@@ -551,15 +570,15 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
     # If all grid point lower value of x_interest have a prediction within desired range --> lower = NA
     # same holds for upper
     if (type_name == "categorical") {
-      dt = dt[pred %between% desired_range,]
+      dt = dt[pred %between% desired_range, ]
       return(dt[[i_name]])
     } else {
-      dt = dt[!pred %between% desired_range,]
-      dt[,"dist"] = abs(dt[[i_name]] - val_name)
-      dt = dt[order(dist),]
-      lower = dt[dt[[i_name]] < val_name][1,][[(i_name)]]
-      upper = dt[dt[[i_name]] > val_name][1,][[(i_name)]]
-      return (c(lower, upper))
+      dt = dt[!pred %between% desired_range, ]
+      dt[, "dist"] = abs(dt[[i_name]] - val_name)
+      dt = dt[order(dist), ]
+      lower = dt[dt[[i_name]] < val_name][1, ][[(i_name)]]
+      upper = dt[dt[[i_name]] > val_name][1, ][[(i_name)]]
+      return(c(lower, upper))
     }
   })
   names(luval) = predictor$data$feature.names
@@ -569,7 +588,7 @@ get_max_box = function (x_interest, fixed_features, predictor, param_set, desire
 }
 
 identify_in_box = function(box, data) {
-  ids = box$ids()  # feature names
+  ids = box$ids() # feature names
   data = data.table::setDT(data)[, ids, with = FALSE]
   cls = box$class[ids]
   checks = lapply(ids, function(j) {
@@ -599,12 +618,12 @@ sampling = function(predictor, x_interest, fixed_features, desired_range, param_
 
   if (strategy == "traindata") {
     sampdata = data.table::copy(predictor$data$get.x())
-    if (!is.null(fixed_features))  {
+    if (!is.null(fixed_features)) {
       sampdata = sampdata[, (fixed_features) :=
-          x_interest[, fixed_features, with = FALSE]]
+        x_interest[, fixed_features, with = FALSE]]
     }
     in_box = identify_in_box(largest_box, data = sampdata)
-    sampdata = sampdata[in_box,]
+    sampdata = sampdata[in_box, ]
   } else if (strategy == "sampled") {
 
     sampdata = SamplerUnif$new(largest_box)$sample(n = num_sampled_points)$data
@@ -612,4 +631,3 @@ sampling = function(predictor, x_interest, fixed_features, desired_range, param_
   }
   return(sampdata)
 }
-

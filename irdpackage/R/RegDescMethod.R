@@ -118,7 +118,7 @@ RegDescMethod = R6::R6Class("RegDescMethod",
 
       # Check box_largest
       assert_class(box_largest, "ParamSet", null.ok = TRUE)
-       if (!is.null(box_largest)) {
+      if (!is.null(box_largest)) {
         assert_set_equal(box_largest$ids(), private$predictor$data$feature.names)
       }
 
@@ -153,28 +153,29 @@ RegDescMethod = R6::R6Class("RegDescMethod",
         calls_fhat = private$.calls_fhat,
         method_parameters = private$.get_parameters())
 
-    }),
-    active = list(
-      #' @field history (`data.table`) \cr
-      #'  stores for each iteration of the method the chosen variable, boundary
-      #'  value and evaluation measures.
-      history = function(value) {
-        if (missing(value)) {
-          private$.history
-        } else {
-          stop("`$history` is read only", call. = FALSE)
-        }
-      },
-      #' @field calls_fhat (`integer(1)`) \cr
-      #'  Number of model prediction calls performed during the search procedure.
-      #'  Read-only.
-      calls_fhat = function(value) {
-        if (missing(value)) {
-          private$.calls_fhat
-        } else {
-          stop("`$calls_fhat` is read only", call. = FALSE)
-        }
+    }
+  ),
+  active = list(
+    #' @field history (`data.table`) \cr
+    #'  stores for each iteration of the method the chosen variable, boundary
+    #'  value and evaluation measures.
+    history = function(value) {
+      if (missing(value)) {
+        private$.history
+      } else {
+        stop("`$history` is read only", call. = FALSE)
       }
+    },
+    #' @field calls_fhat (`integer(1)`) \cr
+    #'  Number of model prediction calls performed during the search procedure.
+    #'  Read-only.
+    calls_fhat = function(value) {
+      if (missing(value)) {
+        private$.calls_fhat
+      } else {
+        stop("`$calls_fhat` is read only", call. = FALSE)
+      }
+    }
   ),
 
   private = list(

@@ -99,13 +99,13 @@ Should progress messages be suppressed?}
 \if{html}{\out{</div>}}
 }
 \subsection{Details}{
-`PostProcessing` is applied to an already existing descriptor and therefore
-requires `box_init` when calling `$find_box()`.
+`PostProcessing` is applied to an already existing descriptor and
+therefore requires `box_init` when calling `$find_box()`.
 
-The method first checks whether the initial box is homogeneous using newly
-sampled points. If not, it peels away boundary regions that are most
-strongly associated with impurity. It then tries to enlarge the refined box
-again by adding candidate regions that remain homogeneous.
+The method first checks whether the initial box is homogeneous using
+newly sampled points. If not, it peels away boundary regions that are
+most strongly associated with impurity. It then tries to enlarge the
+refined box again by adding candidate regions that remain homogeneous.
 
 In the paper, this procedure is motivated by the fact that a descriptor
 found from finite observed data may still include unseen impure regions or

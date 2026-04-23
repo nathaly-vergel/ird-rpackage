@@ -57,13 +57,13 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
     #'   Should progress messages be suppressed?
     #'
     #' @details
-    #' `PostProcessing` is applied to an already existing descriptor and therefore
-    #' requires `box_init` when calling `$find_box()`.
+    #' `PostProcessing` is applied to an already existing descriptor and
+    #' therefore requires `box_init` when calling `$find_box()`.
     #'
-    #' The method first checks whether the initial box is homogeneous using newly
-    #' sampled points. If not, it peels away boundary regions that are most
-    #' strongly associated with impurity. It then tries to enlarge the refined box
-    #' again by adding candidate regions that remain homogeneous.
+    #' The method first checks whether the initial box is homogeneous using
+    #' newly sampled points. If not, it peels away boundary regions that are
+    #' most strongly associated with impurity. It then tries to enlarge the
+    #' refined box again by adding candidate regions that remain homogeneous.
     #'
     #' In the paper, this procedure is motivated by the fact that a descriptor
     #' found from finite observed data may still include unseen impure regions or
@@ -88,7 +88,8 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       private$paste_alpha = paste_alpha
       private$strategy_ties = strategy_ties
 
-    }),
+    }
+  ),
   private = list(
     subbox_relsize = NULL,
     evaluation_n = NULL,
@@ -101,16 +102,18 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
     searchspace = NULL,
     pasting_candidates = NULL,
     pasting_categ_candidates = NULL,
-    run = function(){
+    run = function() {
       private$i = 0L
 
       # estimate largest box according to ice values
       # get ranges for features
       if (is.null(private$box_largest)) {
-        private$box_largest = get_max_box(private$x_interest, private$fixed_features,
-          predictor = private$predictor,
-          param_set = private$param_set, desired_range = private$desired_range,
-          resolution = 500L)
+        private$box_largest = get_max_box(private$x_interest,
+                                          private$fixed_features,
+                                          predictor = private$predictor,
+                                          param_set = private$param_set,
+                                          desired_range = private$desired_range,
+                                          resolution = 500L)
       }
 
       if (is.null(private$box_init)) stop("`box_init` must be specified")
@@ -119,22 +122,24 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       box_new = private$box_init
       # <FIXME:> Take update fixed_features into account!
 
-      vars_diff = setdiff(private$predictor$data$feature.names, private$fixed_features)
-      # vars_diff = private$predictor$data$features.names
+      vars_diff = setdiff(private$predictor$data$feature.names,
+                          private$fixed_features)
 
-      sampled = SamplerUnif$new(box_new)$sample(n = private$evaluation_n*5)$data
+      sampled = SamplerUnif$new(box_new)$sample(n = private$evaluation_n * 5)$data
       sampled = box_new$extra_trafo(x = sampled, predictor = private$predictor)
 
       private$.calls_fhat = private$.calls_fhat + nrow(sampled)
-      homogeneous = sum(predict_range(private$predictor, newdata = sampled,
-        range = private$desired_range)) == nrow(sampled)
+      points_inside = sum(predict_range(private$predictor,
+                                        newdata = sampled,
+                                        range = private$desired_range))
+      homogeneous = points_inside == nrow(sampled)
 
       # divide feature ranges into equally sized bins, each bin containing >=
       # 1/subbox_relsize * 100% of the overall feature range
       private$lookup_sizes = lapply(vars_diff, FUN = function(j) {
         ps = private$param_set$clone()$subset(j)
         if (ps$all_numeric) {
-          s_j = (ps$upper - ps$lower)/(1/private$subbox_relsize)
+          s_j = (ps$upper - ps$lower) / (1 / private$subbox_relsize)
           if (ps$class[[j]] == "ParamInt") {
             s_j = round(s_j)
 
@@ -143,7 +148,7 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
               rng = ps$upper[[1]] - ps$lower[[1]]
               warning(sprintf(
                 "subbox_relsize too small for integer feature '%s' (range = %s). Using step size 1 instead, equivalent to subbox_relsize = %g.",
-                j, rng, 1/rng
+                j, rng, 1 / rng
               ), call. = FALSE)
               s_j = 1 # sensitivity of integers
             }
@@ -163,25 +168,36 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         private$searchspace = lapply(vars_diff, FUN = function(j) {
           ps = box_new$clone()$subset(j)
           if (ps$all_numeric) {
-            if (box_new$upper[[j]] == box_new$lower[[j]]) return(NULL)
+            if (box_new$upper[[j]] == box_new$lower[[j]]) {
+              return(NULL)
+            }
             if (ps$lower[[1]] < private$x_interest[[j]]) {
-              xvecl = c(seq(ps$lower[[1]], private$x_interest[[j]], by = private$lookup_sizes[[j]][[1]])[-1], private$x_interest[[j]])
+              xvecl = c(seq(ps$lower[[1]], private$x_interest[[j]],
+                            by = private$lookup_sizes[[j]][[1]])[-1],
+                        private$x_interest[[j]])
               xvecl = unique(xvecl)
             } else {
               xvecl = numeric()
               box_new = update_box(box_new, j = j, lower = private$x_interest[[j]])
             }
             if (ps$upper > private$x_interest[[j]]) {
-              xvecu = c(seq(ps$upper[[1]], private$x_interest[[j]], by = -private$lookup_sizes[[j]])[-1], private$x_interest[[j]])
+              xvecu = c(seq(ps$upper[[1]], private$x_interest[[j]],
+                            by = -private$lookup_sizes[[j]])[-1],
+                        private$x_interest[[j]])
               xvecu = unique(xvecu)
-              } else {
+            } else {
               xvecu = numeric()
-              box_new = update_box(box_new, j = j, upper = private$x_interest[[j]])
+              box_new = update_box(box_new,
+                                   j = j,
+                                   upper = private$x_interest[[j]])
             }
             return(list(lower = xvecl, upper = xvecu))
           } else if (ps$all_categorical) {
-            if (box_new$nlevels[[j]] == 1) return(NULL)
-            return(list(val = setdiff(ps$levels[[j]], as.character(private$x_interest[[j]]))))
+            if (box_new$nlevels[[j]] == 1) {
+              return(NULL)
+            }
+            return(list(val = setdiff(ps$levels[[j]],
+                                      as.character(private$x_interest[[j]]))))
           }
         })
         names(private$searchspace) = vars_diff
@@ -317,24 +333,38 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         j = ids[[as.integer(j)]]
       }
 
-      new_box = update_box(current_box = current_box, j = j, lower = lower, upper = upper, val = val, complement = TRUE)
+      new_box = update_box(current_box = current_box,
+                           j = j,
+                           lower = lower,
+                           upper = upper,
+                           val = val,
+                           complement = TRUE)
 
       if (!is.null(lower) && !is.na(lower)) {
         # complement ends at old lower
         old_lower = current_box$lower[[j]]
-        new_box = update_box(current_box = new_box, j = j, upper = old_lower, complement = FALSE)
+        new_box = update_box(current_box = new_box,
+                             j = j,
+                             upper = old_lower,
+                             complement = FALSE)
       }
       if (!is.null(upper) && !is.na(upper)) {
         # complement starts at old upper
         old_upper = current_box$upper[[j]]
-        new_box = update_box(current_box = new_box, j = j, lower = old_upper, complement = FALSE)
+        new_box = update_box(current_box = new_box,
+                             j = j,
+                             lower = old_upper,
+                             complement = FALSE)
       }
 
       if (!is.null(val) && !is.na(val)) {
         # complement excludes the chosen categories
         old_levels = current_box$levels[[j]]
         comp_levels = setdiff(val, old_levels)
-        new_box = update_box(current_box = new_box, j = j, val = comp_levels, complement = FALSE)
+        new_box = update_box(current_box = new_box,
+                             j = j,
+                             val = comp_levels,
+                             complement = FALSE)
       }
 
       return(new_box)
@@ -346,18 +376,35 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
     },
     peeling_subbox = function(box_new) {
       a = lapply(sample(names(private$searchspace)), FUN = function(j) { #<FIXME:> mclapply
-        res = data.table(var = character(), lower = numeric(), upper = numeric(),
-          val = character(), impurity = numeric(), dist = numeric(), size = numeric())
+        res = data.table(var = character(),
+                         lower = numeric(),
+                         upper = numeric(),
+                         val = character(),
+                         impurity = numeric(),
+                         dist = numeric(),
+                         size = numeric())
         # identify boxes and evaluate them
         if (box_new$is_categ[[j]]) {
           res = data.table()
           for (cat in private$searchspace[[j]]$val) {
-            subbox = update_box(current_box = box_new, j = j, lower = NULL, upper = NULL,
-              val = cat, complement = FALSE)
-            eval = private$evaluate_box(box = subbox, desired_range = private$desired_range,
-              x_interest = private$x_interest)
-            size = (1/private$param_set$nlevels[[j]])/private$subbox_relsize
-            resrow = data.table(var = j, lower = NA, upper = NA, val = cat, impurity = eval[1], dist = eval[2], size = size)
+            subbox = update_box(current_box = box_new,
+                                j = j,
+                                lower = NULL,
+                                upper = NULL,
+                                val = cat,
+                                complement = FALSE)
+
+            eval = private$evaluate_box(box = subbox,
+                                        desired_range = private$desired_range,
+                                        x_interest = private$x_interest)
+            size = (1 / private$param_set$nlevels[[j]]) / private$subbox_relsize
+            resrow = data.table(var = j,
+                                lower = NA,
+                                upper = NA,
+                                val = cat,
+                                impurity = eval[1],
+                                dist = eval[2],
+                                size = size)
             res = rbind(res, resrow)
           }
         } else {
@@ -368,10 +415,17 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
             } else {
               subbox = update_box(current_box = box_new, j = j, lower = bound)
             }
-            size =  (subbox$upper[[j]]- subbox$lower[[j]])/private$lookup_sizes[[j]]
-            eval = private$evaluate_box(subbox, desired_range = private$desired_range,
-              x_interest = private$x_interest)
-            resrow = data.table(var = j, lower = NA, upper = NA, val = NA, impurity = eval[1], dist = eval[2], size = size)
+            size = (subbox$upper[[j]] - subbox$lower[[j]]) / private$lookup_sizes[[j]]
+            eval = private$evaluate_box(subbox,
+                                        desired_range = private$desired_range,
+                                        x_interest = private$x_interest)
+            resrow = data.table(var = j,
+                                lower = NA,
+                                upper = NA,
+                                val = NA,
+                                impurity = eval[1],
+                                dist = eval[2],
+                                size = size)
             resrow[, (l) := bound]
             res = rbind(res, resrow)
           }
@@ -385,8 +439,9 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         return(NULL)
       }
 
-      ## identify worst (largest impurity) relative to size (if both boxes same precision, choose smaller one!)
-      best = res_table[order(impurity/size, -dist, decreasing = TRUE)[1]]
+      ## identify worst (largest impurity) relative to size
+      # (if both boxes same precision, choose smaller one!)
+      best = res_table[order(impurity / size, -dist, decreasing = TRUE)[1]]
       # <FIXME:> change this to allow for slight impurity --> new parameter
 
       if (best$impurity == 0) {
@@ -399,19 +454,26 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       } else if (!is.na(best$lower)) {
         private$searchspace[[best$var]]$lower = private$searchspace[[best$var]]$lower[-1]
       } else if (!is.na(best$val)) {
-        private$searchspace[[best$var]]$val = setdiff(private$searchspace[[best$var]]$val, best$val)
+        private$searchspace[[best$var]]$val = setdiff(private$searchspace[[best$var]]$val,
+                                                      best$val)
       }
       ## Declutter searchspace
       private$searchspace = private$declutter_searchspace(best$var)
-      box_new = update_box(current_box = box_new, j = best$var, lower = best[["lower"]],
-        upper = best[["upper"]], val = setdiff(box_new$levels[[best$var]], best[["val"]]), complement = FALSE)
+      box_new = update_box(current_box = box_new,
+                           j = best$var,
+                           lower = best[["lower"]],
+                           upper = best[["upper"]],
+                           val = setdiff(box_new$levels[[best$var]], best[["val"]]),
+                           complement = FALSE)
 
       ## Save info in history
       best$alpha = 1
       private$.history = rbind(private$.history, best)
-      private$i = private$i+1L
+      private$i = private$i + 1L
       if (!private$quiet) {
-        message(paste("peeling iteration", private$i, "with peeling variable", best$var, "and impurity = ", best$impurity))
+        message(paste("peeling iteration", private$i,
+                      "with peeling variable", best$var,
+                      "and impurity = ", best$impurity))
       }
       return(box_new)
     },
@@ -423,11 +485,22 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
         if (box_new$is_categ[[j]]) {
           res = data.table()
           for (cat in private$pasting_candidates[[j]]$val) {
-            box = private$create_subbox(current_box = box_new, j = j, lower = NULL, upper = NULL, val = cat)
-            eval = private$evaluate_box(box = box, desired_range = private$desired_range,
-              x_interest = private$x_interest)
-            size = (1/private$param_set$nlevels[[j]])/private$subbox_relsize
-            resrow = data.table(var = j, lower = NA, upper = NA, val = cat, impurity = eval[1], dist = eval[2], size = size)
+            box = private$create_subbox(current_box = box_new,
+                                        j = j,
+                                        lower = NULL,
+                                        upper = NULL,
+                                        val = cat)
+            eval = private$evaluate_box(box = box,
+                                        desired_range = private$desired_range,
+                                        x_interest = private$x_interest)
+            size = (1 / private$param_set$nlevels[[j]]) / private$subbox_relsize
+            resrow = data.table(var = j,
+                                lower = NA,
+                                upper = NA,
+                                val = cat,
+                                impurity = eval[1],
+                                dist = eval[2],
+                                size = size)
             res = rbind(res, resrow)
           }
         } else {
@@ -436,14 +509,25 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
 
             # Create candidate box
             if (l == "lower") {
-              subbox = private$create_subbox(current_box = box_new, j = j, lower = bound)
+              subbox = private$create_subbox(current_box = box_new,
+                                             j = j,
+                                             lower = bound)
             } else {
-              subbox = private$create_subbox(current_box = box_new, j = j, upper = bound)
+              subbox = private$create_subbox(current_box = box_new,
+                                             j = j,
+                                             upper = bound)
             }
-            size =  (subbox$upper[[j]]- subbox$lower[[j]])/private$lookup_sizes[[j]]
-            eval = private$evaluate_box(subbox, desired_range = private$desired_range,
-              x_interest = private$x_interest)
-            resrow = data.table(var = j, lower = NA, upper = NA, val = NA, impurity = eval[1], dist = eval[2], size = size)
+            size = (subbox$upper[[j]] - subbox$lower[[j]]) / private$lookup_sizes[[j]]
+            eval = private$evaluate_box(subbox,
+                                        desired_range = private$desired_range,
+                                        x_interest = private$x_interest)
+            resrow = data.table(var = j,
+                                lower = NA,
+                                upper = NA,
+                                val = NA,
+                                impurity = eval[1],
+                                dist = eval[2],
+                                size = size)
             resrow[, (l) := bound]
             res = rbind(res, resrow)
           }
@@ -481,12 +565,13 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       if (private$strategy_ties == "random") {
         best = res_table[order(impurity, size)[1]]
       } else {
-        # choose box with impurity == 0 and with smallest changes in prediction function relative to size!
-        best = res_table[order(impurity, dist*size)[1]]
+        # choose box with impurity == 0
+        # and with smallest changes in prediction function relative to size!
+        best = res_table[order(impurity, dist * size)[1]]
       }
       # <FIXME:> change this to allow for slight impurity --> new parameter
       if (best$impurity > 0) {
-        private$alpha = private$alpha*1/2
+        private$alpha = private$alpha * 1 / 2
       } else {
 
         if (!is.na(best[["val"]])) {
@@ -498,13 +583,19 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
           }
         }
 
-        box_new = update_box(current_box = box_new, j = best$var, lower = best[["lower"]],
-          upper = best[["upper"]], val = best[["val"]], complement = TRUE)
+        box_new = update_box(current_box = box_new,
+                             j = best$var,
+                             lower = best[["lower"]],
+                             upper = best[["upper"]],
+                             val = best[["val"]],
+                             complement = TRUE)
         ## Save info in history
         private$.history = rbind(private$.history, best)
-        private$i = private$i+1L
+        private$i = private$i + 1L
         if (!private$quiet) {
-          message(paste("pasting iteration", private$i, "with pasting variable", best$var, "and alpha = ", private$alpha))
+          message(paste("pasting iteration", private$i,
+                        "with pasting variable", best$var,
+                        "and alpha = ", private$alpha))
         }
       }
       return(box_new)

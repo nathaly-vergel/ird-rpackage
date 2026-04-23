@@ -54,15 +54,18 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
       private$bins = bins
       private$tau = tau
       private$argsanchors = list(...)
-    }),
+    }
+  ),
   private = list(
     argsanchors = NULL,
     bins = NULL,
     tau = NULL,
     initialize_bins = function() {
       binseq = seq(0, 1, 0.05)
-      bins = lapply(private$predictor$data$feature.names, function(col_name){
-        if (col_name %in% private$fixed_features) return(integer())
+      bins = lapply(private$predictor$data$feature.names, function(col_name) {
+        if (col_name %in% private$fixed_features) {
+          return(integer())
+        }
         column = private$predictor$data$X[[col_name]]
         if (is.numeric(column)) {
           num = as.numeric(quantile(column, probs = binseq))
@@ -77,7 +80,7 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
       names(bins) = private$predictor$data$feature.names
       return(bins)
     },
-    run = function(){
+    run = function() {
       # browser()
       # closeAllConnections()
       # message("closed all connections")
@@ -117,12 +120,12 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
 
       predict_model.Predictor <<- function(x, newdata, type, ...) {
         private$.calls_fhat = private$.calls_fhat + nrow(newdata)
-        predtab <- predict_range(x, newdata = newdata, range = private$desired_range)
-        pred <- predtab
+        predtab = predict_range(x, newdata = newdata, range = private$desired_range)
+        pred = predtab
       }
 
       model_type.Predictor <<- function(x, ...) {
-        obj <- "classification"
+        obj = "classification"
         # if (is.null(obj)|obj == "unknown") stop('Model type needs to be specified', call. = FALSE)
         # if (is.function(obj)) stop('Unsupported model type', call. = FALSE)
         # if (!obj %in% c("regression", "classification")) stop('Unsupported model type', call. = FALSE)
@@ -130,9 +133,12 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
       }
 
       if (private$quiet) {
-        explanations = try({suppressMessages(anchors::explain(private$x_interest, explainer, labels = 1))})
+        explanations = try({
+          suppressMessages(anchors::explain(private$x_interest, explainer, labels = 1))
+        })
       } else {
-        explanations = try({anchors::explain(private$x_interest, explainer)
+        explanations = try({
+          anchors::explain(private$x_interest, explainer)
         })
       }
       # if (private$tries_if_error > 0) {
@@ -185,7 +191,7 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
           } else if (operator == "<") {
             val = gsub("(.+?)(<=)(.+?)", "\\3", expr)
             current_box = update_box(current_box = current_box,
-              j = feat, upper = as.numeric(val),  complement = FALSE)
+              j = feat, upper = as.numeric(val), complement = FALSE)
           } else if (operator == "{") {
             val = gsub("(.+?\\{)(.+?)(\\}.*)", "\\2", expr)
             if (grepl(",", val)) val = eval(parse(text = paste0("c(", val, ")")))
