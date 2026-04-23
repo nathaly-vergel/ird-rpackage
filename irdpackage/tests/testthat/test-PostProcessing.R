@@ -33,6 +33,7 @@ test_that("Box is covered by true box", {
   result = method$find_box(x_interest = x_interest,
     desired_range = desired_range, box_init = largestbox)
 
+  set.seed(1234L)
   expect_true(all(result$evaluate() == 0))
 
 })
