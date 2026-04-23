@@ -1,0 +1,19 @@
+---
+title: "irdpackage: an R Package for Interpretable Regional Descriptors"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{irdpackage-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(irdpackage)
+```

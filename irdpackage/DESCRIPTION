@@ -42,3 +42,4 @@ RoxygenNote: 7.3.3
 Remotes:
   viadee/anchorsOnR
 Config/testthat/edition: 3
+VignetteBuilder: knitr
