@@ -40,9 +40,13 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
     #'   Default is `0.05`.
     #' @param evaluation_n (`numeric(1)`) \cr
     #'   Number of newly sampled points used to evaluate each candidate box or
-    #'   subbox.
+    #'   subbox during peeling and pasting.
     #'   Larger values give more stable estimates of impurity and prediction
     #'   distance but increase computation time.
+    #'
+    #'   For the initial homogeneity check of the starting box, a larger sample
+    #'   is used internally, namely `evaluation_n * p`, where `p` is the number
+    #'   of (non-fixed) features.
     #' @param paste_alpha (`numeric(1)`) \cr
     #'   Minimum relative step size allowed during the pasting phase.
     #'   If no homogeneous expansion can be found, the current pasting step size
@@ -150,7 +154,11 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       vars_diff = setdiff(private$predictor$data$feature.names,
                           private$fixed_features)
 
-      sampled = SamplerUnif$new(box_new)$sample(n = private$evaluation_n * 5)$data
+
+      # use No of features to scale sampling (COD)
+      p = length(vars_diff)
+
+      sampled = SamplerUnif$new(box_new)$sample(n = private$evaluation_n * p)$data
       sampled = box_new$extra_trafo(x = sampled, predictor = private$predictor)
 
       private$.calls_fhat = private$.calls_fhat + nrow(sampled)
@@ -172,9 +180,16 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
             if (s_j == 0) {
               rng = ps$upper[[1]] - ps$lower[[1]]
               warning(sprintf(
-                "subbox_relsize too small for integer feature '%s' (range = %s). Using step size 1 instead, equivalent to subbox_relsize = %g.",
+                paste0(
+                  "subbox_relsize too small for integer feature '%s' (range = %s). ",
+                  "Using step size 1 for this feature only (equivalent to subbox_relsize = %g). ",
+                  "The original subbox_relsize is kept unchanged for all other features."
+                ),
                 j, rng, 1 / rng
               ), call. = FALSE)
+
+              # adjust step size locally for this feature only
+              # does not modify global subbox_relsize!
               s_j = 1 # sensitivity of integers
             }
           }

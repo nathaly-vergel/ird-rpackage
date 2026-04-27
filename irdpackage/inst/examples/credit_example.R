@@ -165,6 +165,7 @@ maxbox_post$plot_surface(
 #                       Compute IRD with Maire
 # ------------------------------------------------------------------------
 
+set.seed(12005L)
 system.time({
   maire_res = find_ird(
     predictor = pred,
@@ -215,6 +216,7 @@ maire_post$plot_surface(
 
 anch = Anchor$new(predictor = pred)
 
+set.seed(12345L)
 system.time({
   anchor_res = anch$find_box(
     x_interest = x_interest,
