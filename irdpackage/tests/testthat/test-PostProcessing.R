@@ -14,6 +14,17 @@ test_that("Regression and mixed features + fixed_features", {
   method = PostProcessing$new(pred, subbox_relsize = 0.5, evaluation_n = 50L, quiet = TRUE)
   res = method$find_box(x_interest = x_interest,
     desired_range = desired_range, fixed_features = c("carb"), box_init = box)
+
+  # checks about immutable features
+  expect_equal(res$box$lower[["carb"]], x_interest$carb)
+  expect_equal(res$box$upper[["carb"]], x_interest$carb)
+  expect_equal(res$fixed_features, "carb")
+
+  # box contains x_interest
+  expect_true(all(identify_in_box(res$box, x_interest)))
+
+  expect_equal(res$method, "PostProcessing")
+  expect_s3_class(res$history, "data.table")
 })
 
 
