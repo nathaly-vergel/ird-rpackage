@@ -401,9 +401,25 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
       return(current_box)
     },
     print_parameters = function() {
-      # cat(" - searchgrid_resolution: ", private$searchgrid_resolution, "\n")
-      # cat(" - evaluation_n: ", private$evaluation_n, "\n")
-      # cat(" - paste_alpha: ", private$paste_alpha, "\n")
+      params = private$.get_parameters()
+
+      if (length(params) == 0L) {
+        cat(" - none\n")
+        return(invisible(self))
+      }
+
+      for (nm in names(params)) {
+        value = params[[nm]]
+
+        if (is.null(value)) {
+          value = "NULL"
+        } else if (length(value) > 1L) {
+          value = paste(value, collapse = ", ")
+        }
+        cat(" - ", nm, ": ", value, "\n", sep = "")
+      }
+
+      invisible(self)
     },
     .get_parameters = function() {
       list(
