@@ -99,8 +99,10 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
                                 TRUE, FALSE)
       assert_true(length(private$positive) == nrow(private$obsdata))
 
+      obsdata_search = private$obsdata
+
       if (!is.null(private$fixed_features)) {
-        private$obsdata = private$obsdata[, (private$fixed_features) := NULL]
+        obsdata_search = copy(obsdata_search)[, (private$fixed_features) := NULL]
         x_interest = copy(private$x_interest)[, (private$fixed_features) := NULL]
       } else {
         x_interest = private$x_interest
@@ -109,7 +111,9 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
       # transform categorical features
       # 1-hot encoded
       expldata = transform_for_explanation(predictor = private$predictor,
-        data = private$obsdata, x_interest = x_interest, version = 2)
+                                           data = obsdata_search,
+                                           x_interest = x_interest,
+                                           version = 2)
       assert_true(length(private$positive) == nrow(expldata$expldata))
 
       private$explx_interest = expldata$explx_interest
@@ -127,6 +131,7 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
       inbox = private$expldata[, all(between(.SD, lower = posmin, upper = posmax)), by = seq_len(nrow(private$expldata)), ]$seq_len
       private$expldata = private$expldata[inbox, ]
       private$obsdata = private$obsdata[inbox, ]
+      obsdata_search = obsdata_search[inbox, ]
 
       if (ncol(private$expldata) > 500L) {
         stop(sprintf("%s subproblems were detected that need to be inspected per iteration. The MaxBox approach is not suitable for this number.", ncol(private$expldata)))
@@ -221,7 +226,9 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
 
       }
       if (is.null(current_optimum)) current_optimum = node
-      param_set = make_param_set(private$obsdata[current_optimum$inbox, ])
+      param_set = make_param_set(
+        private$obsdata[current_optimum$inbox, private$predictor$data$feature.names, with = FALSE]
+      )
       return(param_set)
     },
     # check feasibility --> p. 290
