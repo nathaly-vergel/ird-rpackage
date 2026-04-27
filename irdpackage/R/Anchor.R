@@ -26,6 +26,10 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
     #' Immutable features defined in `fixed_features` are automatially set to integer().
     #' @param ... \cr Further hyperparameters of anchors (see `anchors::anchors`).
     #' @return (RegDesc) Hyperbox
+    #' @details
+    #' This method relies on the external `anchors` backend, which is stochastic and
+    #' may fail for some random states. If this happens, rerun the method or try a
+    #' different seed before calling `$find_box()`.
     initialize = function(predictor,
                           tau = 1,
                           initialize_bins = TRUE,
@@ -135,11 +139,11 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
       if (private$quiet) {
         explanations = try({
           suppressMessages(anchors::explain(private$x_interest, explainer, labels = 1))
-        })
+        }, silent = TRUE)
       } else {
         explanations = try({
           anchors::explain(private$x_interest, explainer)
-        })
+        }, silent = TRUE)
       }
       # if (private$tries_if_error > 0) {
       #   i = 1
@@ -152,9 +156,17 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
       #   }
       # }
       if (inherits(explanations, "try-error")) {
-        message(explanations)
         closeAllConnections()
-        stop(explanations)
+
+        stop(
+          "The Anchor method failed while calling `anchors::explain()`. ",
+          "This can happen because the external anchors backend is stochastic ",
+          "and may fail for some random states. ",
+          "Please try running the method again, or set a different seed before calling `$find_box()`.\n\n",
+          "Original error:\n",
+          conditionMessage(attr(explanations, "condition")),
+          call. = FALSE
+        )
       }
 
       # postprocess output
