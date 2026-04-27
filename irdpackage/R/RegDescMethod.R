@@ -144,7 +144,6 @@ RegDescMethod = R6::R6Class("RegDescMethod",
       private$box_largest = box_largest
       private$box_init = box_init
       box = private$run()
-      box = private$sanitize_box(box)
 
       RegDesc$new(box = box, predictor = private$predictor,
         x_interest = x_interest, desired_range = desired_range,
@@ -283,26 +282,6 @@ RegDescMethod = R6::R6Class("RegDescMethod",
       }
 
       desired_range
-    },
-    sanitize_box = function(box) {
-
-      domains = box$domains
-      ids = box$ids()
-
-      for (j in ids) {
-        if (box$class[[j]] == "ParamInt") {
-          dom = domains[[j]]
-          domains[[j]] = paradox::p_int(
-            lower = ceiling(dom$lower),
-            upper = floor(dom$upper)
-          )
-        }
-      }
-
-      new_box = paradox::ParamSet$new(params = domains)
-      new_box$extra_trafo = box$extra_trafo
-
-      return(new_box)
     },
     run = function() {
       stop("Abstract base class")
