@@ -120,7 +120,32 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
 
       # smallest box (includes only x_interest)
       box_new = private$box_init
-      # <FIXME:> Take update fixed_features into account!
+
+      # Take update fixed_features into account!
+
+      # Since PostProcessing starts from box_init, fixed features need to be
+      # restricted manually. Usually box_init comes with the fixed_features
+      # fixed to x_interest, but not always the case!
+
+      if (!is.null(private$fixed_features)) {
+        for (j in private$fixed_features) {
+          if (box_new$is_categ[[j]]) { # keep only the val of x_interest
+            box_new = update_box(
+              current_box = box_new,
+              j = j,
+              val = as.character(private$x_interest[[j]]),
+              complement = FALSE
+            )
+          } else { # numeric: collapse interval to x_interest value
+            box_new = update_box(
+              current_box = box_new,
+              j = j,
+              lower = private$x_interest[[j]],
+              upper = private$x_interest[[j]]
+            )
+          }
+        }
+      }
 
       vars_diff = setdiff(private$predictor$data$feature.names,
                           private$fixed_features)
