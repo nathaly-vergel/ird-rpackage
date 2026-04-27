@@ -180,9 +180,16 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
             if (s_j == 0) {
               rng = ps$upper[[1]] - ps$lower[[1]]
               warning(sprintf(
-                "subbox_relsize too small for integer feature '%s' (range = %s). Using step size 1 instead, equivalent to subbox_relsize = %g.",
+                paste0(
+                  "subbox_relsize too small for integer feature '%s' (range = %s). ",
+                  "Using step size 1 for this feature only (equivalent to subbox_relsize = %g). ",
+                  "The original subbox_relsize is kept unchanged for all other features."
+                ),
                 j, rng, 1 / rng
               ), call. = FALSE)
+
+              # adjust step size locally for this feature only
+              # does not modify global subbox_relsize!
               s_j = 1 # sensitivity of integers
             }
           }
