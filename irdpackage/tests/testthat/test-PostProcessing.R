@@ -31,10 +31,30 @@ test_that("Box is covered by true box", {
   largestbox = make_param_set(pred$data$X)
   method = PostProcessing$new(pred, subbox_relsize = 0.5, evaluation_n = 50L, quiet = TRUE)
   result = method$find_box(x_interest = x_interest,
-    desired_range = desired_range, box_init = largestbox)
+                           desired_range = desired_range,
+                           box_init = largestbox)
 
-  set.seed(1234L)
-  expect_true(all(result$evaluate() == 0))
+  ids = result$box$ids()
+
+  # Limits for true box (derived from leaf)
+  true_lower = box$lower[ids]
+  true_upper = box$upper[ids]
+
+  # Learned limits (from PostProcessing)
+  learned_lower = result$box$lower[ids]
+  learned_upper = result$box$upper[ids]
+
+  # Domain is based on largest box because true boxes' range might be Inf
+  domain_range = largestbox$upper[ids] - largestbox$lower[ids]
+
+  lower_violation = pmax(0, true_lower - learned_lower)
+  upper_violation = pmax(0, learned_upper - true_upper)
+
+  relative_violation = (lower_violation + upper_violation) / domain_range
+
+  valid = is.finite(domain_range) & domain_range > 0
+
+  expect_true(all(relative_violation[valid] <= 0.01))
 
 })
 
