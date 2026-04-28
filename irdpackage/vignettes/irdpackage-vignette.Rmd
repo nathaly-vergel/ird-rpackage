@@ -35,6 +35,10 @@ The resulting hyperboxes allow for multiple types of analysis. For example, we c
 
 The `irdpackage` provides a unified and extensible framework to compute IRDs using different underlying algorithms (for example, PRIM, MaxBox, MAIRE), together with a post-processing procedure that improves the quality of the resulting regions.
 
+### Contributions
+
+\<TODO\>
+
 # Methodological Background
 
 ## Setup
@@ -45,7 +49,7 @@ $$
 B = B_1 \times \dots \times B_p
 $$
 
-such that i) $\text{x}' \in B$ (locality), ii) predictions inside $B$ remain close to $\hat{f}(\text{x}')$ and and iii) $B$ is as large as possible. For numeric features, $B_j = [l_j, u_j]$ and, for categorical features, $B_j \subseteq \mathcal{X}_j$.
+such that i) $\text{x}' \in B$ (locality), ii) predictions inside $B$ remain close to $\hat{f}(\text{x}')$ and iii) $B$ is as large as possible. For numeric features, $B_j = [l_j, u_j]$ and, for categorical features, $B_j \subseteq \mathcal{X}_j$.
 
 Closeness is defined via a prediction region
 
@@ -97,7 +101,7 @@ That is, we aim to find the largest possible hyperbox $B$ around our point of in
 
 An IRD can be interpreted as the answer to the following question:
 
-> *To what extend can the features of a particular data point be simultaneously changed while keeping the model's prediction withing a specific range?*
+> *To what extent can the features of a particular data point be simultaneously changed while keeping the model's prediction withing a specific range?*
 
 A valid IRD satisfies these properties: homogeneity, meaning that all points inside the hyperbox have predictions that fall withing the desired range, and maximality, which means that the hyperbox cannot be expanded further without violating precision (predictions falling outside $Y'$).
 
@@ -170,6 +174,8 @@ This step improves the box’s boundaries by re-evaluating it with newly sampled
 Finding an IRD can be computationally demanding, especially when there are many features, because the search space grows quickly. To handle this, the framework lets users fix certain features to the values they have in $\text{x}'$, which simplifies the search.
 
 Fixing features can also have the purpose of making the resulting explanation more actionable for the person consuming the explanation. For example, some features, such as the age, are considered to be *immutable,* as can not be changed in real life. By keeping them fixed in $\text{x}'$, the IRD focuses only on features that can actually be modified by the user.
+
+# 
 
 # The irdpackage in R
 
