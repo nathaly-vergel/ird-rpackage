@@ -175,9 +175,23 @@ Finding an IRD can be computationally demanding, especially when there are many 
 
 Fixing features can also have the purpose of making the resulting explanation more actionable for the person consuming the explanation. For example, some features, such as the age, are considered to be *immutable,* as can not be changed in real life. By keeping them fixed in $\text{x}'$, the IRD focuses only on features that can actually be modified by the user.
 
-# 
-
 # The irdpackage in R
+
+The `irdpackage` provides a unified and model-agnostic framework for computing IRDs in R.The package implements several IRD algorithms, with a standard way of defining, executing and returning them. Given a trained model and an observation of interest `x_interest`, and a prediction range, the package computes an IRD as a hyperbox that contains `x_interest` and keeps the predictions within the `desired_range`.
+
+From a user perspective, the package offers a simple interface based on two primary functions: `find_ird()` computes an IRD by selecting and running a method such as PRIM, MaxBox or MAIRE. The function `postprocess_box()` refines the learned box by applying a post-processing procedure which aims to further improve the coverage and precision.
+
+The general workflow consists on first wrapping a model in a iml::Predictor [@Molnar2018IML] and then executing a particular method through the `find_ird()` function by feeding it the x_interest, the desired prediction range, the method's parameters and some optional constraints. The result is always returned as a `RegDesc` object, which can be inspected, evaluated and visualized.
+
+Inspired by the `counterfactuals` package [@Dandl2023Counterfactuals], `irdpackage` is built based on an R6 arquitecture @Chang2021R6, in which all IRD methods inherit from a common abstract base class called `RegDescMethod`. This class does input validation, detects the task (regression versus classification settings), manages the user's constraints such as the fixed features and wraps the final result in a standarized output object. Each concrete method only implements its own search procedure in `private$run()`.
+
+Internally, regional descriptors are represented using paradox::ParamSet objects [@Lang2022Paradox]: numeric features are described by intervals and categorical features by subsets of levels. Parameters with integer domain are also supported.
+
+The output of every method is a `RegDesc` object, which is the standarized result container. It stores the final box, the predictor, the observation of interest, the desired prediction range or class, the set of fixed (immutable) features along with the method-specific metadata and optimization history. Users can print the descriptor, evaluate its quality by assessing the metrics using sampling or the training data, and also visualize the IRD projected onto a 2D prediction surface.
+
+Notice that the package is inherently model-agnostic. By relying on iml::Predictor, all methods can interact and probe the model using a unified prediction interface, which is independent of how the model was trained or the prediction task. Furthermore, the package is designed to support actionability constraints via the `fixed_features` argument, which both ensures that certain variables remain unchanged and reduces also the search space (and, consequently, the computational cost).
+
+Given that the package uses a common abstract class that handles the shared logic and the individual algorithms only implement their specific search routine, the `irdpackage` can be easily extended to new methods, as will be explored in section \<TODO\>.
 
 # Use cases {#usecases}
 
