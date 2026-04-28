@@ -159,6 +159,12 @@ To refine the box, @Dandl2023IRD introduced a post-processing step inspired by P
 
 This step improves the box’s boundaries by re-evaluating it with newly sampled data from the local search space. Empirical results from the paper show that post-processing consistently improves IRD quality when higher accuracy is needed. Notice, however, that enhancing coverage and precision comes at the cost of additional model evaluations.
 
+## On computational efficiency and immutable features
+
+Finding an IRD can be computationally demanding, especially when there are many features, because the search space grows quickly. To handle this, the framework lets users fix certain features to the values they have in $\text{x}'$, which simplifies the search.
+
+Fixing features can also have the purpose of making the resulting explanation more actionable for the person consuming the explanation. For example, some features, such as the age, are considered to be *immutable,* as can not be changed in real life. By keeping them fixed in $\text{x}'$, the IRD focuses only on features that can actually be modified by the user.
+
 # The irdpackage in R
 
 # Use cases {#usecases}
