@@ -28,6 +28,7 @@ Suggests:
     anchors,
     knitr,
     rmarkdown,
+    bookdown,
     MASS,
     StatMatch,
     testthat (>= 3.0.0),

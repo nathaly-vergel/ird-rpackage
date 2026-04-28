@@ -1,6 +1,8 @@
 ---
 title: "irdpackage: an R Package for Interpretable Regional Descriptors"
-output: rmarkdown::html_vignette
+output:
+  bookdown::html_document2: default
+  bookdown::pdf_document2: default
 vignette: >
   %\VignetteIndexEntry{irdpackage-vignette}
   %\VignetteEngine{knitr::rmarkdown}
@@ -106,7 +108,11 @@ These two properties allow for two interesting interpretations:
 
 ## Unified IRD Framework
 
-The general workflow to compute IRDs can be decomposed into four steps, illustrated in Figure X.
+The general workflow to compute IRDs can be decomposed into four steps, illustrated in Figure \@ref(fig:framework-ird).
+
+```{r framework-ird, fig.cap="Figure 1. IRD framework", echo=FALSE, out.width="100%", out.height="100%", fig.align="center"}
+knitr::include_graphics("IRD_framework.pdf")
+```
 
 The search for $B$ is done by using the following steps [@Dandl2023IRD]:
 
