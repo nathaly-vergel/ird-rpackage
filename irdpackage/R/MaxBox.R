@@ -400,11 +400,6 @@ MaxBox = R6::R6Class("MaxBox", inherit = RegDescMethod,
       }
       return(current_box)
     },
-    print_parameters = function() {
-      # cat(" - searchgrid_resolution: ", private$searchgrid_resolution, "\n")
-      # cat(" - evaluation_n: ", private$evaluation_n, "\n")
-      # cat(" - paste_alpha: ", private$paste_alpha, "\n")
-    },
     .get_parameters = function() {
       list(
         strategy = private$strategy,
