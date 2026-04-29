@@ -59,6 +59,8 @@ $$
 
 which encodes the tolerance within which predictions are considered equivalent.
 
+Notice that this formulation applies for both regression and classification tasks. In regression, the learned prediction function returns a numeric value and the desired range $Y'$ is defined as an interval of "stable" or acceptable prediction values. In classification, $\hat{f}$ can return either the score or the probability for a particular class of interest, in which case $Y'$ is a score range or a probability interval. A direct handling of hard labels is not supported.
+
 ## Optimization Objective
 
 The search for an IRD is formalized as an optimization problem, where the three following criteria are used:
