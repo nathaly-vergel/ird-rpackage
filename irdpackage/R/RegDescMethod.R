@@ -36,9 +36,10 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     #' Prints a `RegDescMethod` object.
     #' The method prints the named list returned by `$get_parameters()`.
     print = function() {
-      cat("Regional descriptor method: ", class(self)[1], "\n")
+      cat("Regional descriptor method: ", class(self)[1], "\n", sep = "")
       cat("Parameters:\n")
-      private$print_parameters(private$.get_parameters())
+      cat(private$format_parameters(private$.get_parameters()), sep = "\n")
+      cat("\n")
       invisible(self)
     },
     #' @description
@@ -289,17 +290,14 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     .get_parameters = function() {
       list()
     },
-    print_parameters = function(params) {
+    format_parameters = function(params) {
       if (length(params) == 0L) {
-        cat(" - none\n")
-        return(invisible(self))
+        return(" - none")
       }
 
-      for (nm in names(params)) {
-        cat(" - ", nm, ": ", private$format_parameter(params[[nm]]), "\n", sep = "")
-      }
-
-      invisible(self)
+      vapply(names(params), function(nm) {
+        paste0(" - ", nm, ": ", private$format_parameter(params[[nm]]))
+      }, character(1))
     },
     format_parameter = function(value) {
       if (is.null(value)) {
