@@ -1,12 +1,12 @@
 ---
 title: "irdpackage: an R Package for Interpretable Regional Descriptors"
 output:
-  bookdown::html_document2: default
   bookdown::pdf_document2: default
+  bookdown::html_document2: default
 vignette: >
   %\VignetteIndexEntry{irdpackage-vignette}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
 bibliography: bibliography_ird.bib
 ---
 
@@ -15,10 +15,6 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-```
-
-```{r setup}
-library(irdpackage)
 ```
 
 # Introduction {#introduction}
@@ -195,9 +191,67 @@ The output of every method is a `RegDesc` object, which is the standarized resul
 
 Notice that the package is inherently model-agnostic. By relying on iml::Predictor, all methods can interact and probe the model using a unified prediction interface, which is independent of how the model was trained or the prediction task. Furthermore, the package is designed to support actionability constraints via the `fixed_features` argument, which both ensures that certain variables remain unchanged and reduces also the search space (and, consequently, the computational cost).
 
-Given that the package uses a common abstract class that handles the shared logic and the individual algorithms only implement their specific search routine, the `irdpackage` can be easily extended to new methods, as will be explored in section \<TODO\>.
+Given that the package uses a common abstract class that handles the shared logic and the individual algorithms only implement their specific search routine, the `irdpackage` can be easily extended to new methods, as will be explored in section \@ref(extension).
 
-# Use cases {#usecases}
+# Use example: IRD for credit data {#usecases}
+
+To illustrate the workflow of the package, we use the German Credit data and a credit-risk classification task. This follows from the same motivating example discussed in @Dandl2023IRD, where a customer applies for a loan and we would like to understand how much her feature values could vary while the prediction still stays in the same risk region. In particular, we are interested in explaining a moderate-risk credit application for a woman asking for a car loan. In this setup, an Interpretable Regional Descriptor can help us answer how far several features could change simultaneously while the prediction still remains in the chosen risk region.
+
+The example makes use of several R packages. We use `mlr3` to define the classification task, `mlr3learners` to train a `ranger` random forest model and `iml` to wrap the fitted model in a common prediction interface.
+
+```{r setup}
+
+library("mlr3")
+library("mlr3learners")
+library("iml")
+library("mlr3pipelines")
+
+# During package development
+devtools::load_all()
+
+# Or by installing the package
+# remotes::install_github("nathaly-vergel/ird-rpackage", subdir = "irdpackage")
+# library("irdpackage")
+```
+
+During package development, the package can be loaded with `devtools::load_all()`. If the package has been installed (using `remotes::install_github()`, for example), one can load it with `library("irdpackage")`
+
+## Data and prediction task
+
+The data set
+
+```{r load-data}
+
+credit = read.csv(
+  "inst/examples/data/german_credit_data.csv",
+  row.names = 1,
+  stringsAsFactors = TRUE
+)
+
+# remove incomplete rows
+credit = na.omit(credit)
+
+# merge rare categories
+levels(credit$Purpose) = c(
+  "others", "car", "others", "others",
+  "furniture", "radio/TV", "others", "others"
+)
+levels(credit$Saving.accounts) = c("little", "moderate", "rich", "rich")
+credit$Job = factor(
+  credit$Job,
+  levels = c(0, 1, 2, 3),
+  labels = c("unskilled", "unskilled", "skilled", "highly skilled")
+)
+
+# standardize names and drop unused levels
+names(credit) = tolower(names(credit))
+credit = droplevels.data.frame(credit)
+
+# ordered factors
+credit$saving.accounts = as.ordered(credit$saving.accounts)
+credit$checking.account = as.ordered(credit$checking.account)
+
+```
 
 # How to extend the package {#extension}
 
@@ -263,7 +317,7 @@ For a seemless integration with the package, it is recommended that newly adapte
 
 Although this is not required, new methods can be added to the package's high-level interface (i.e. syntactic sugar functions) by extending the `find_ird()` function. This allows users to call the method using a simple parameter indicating the method's name instead of manually instantiating the object and calling `find_box()`. Such integration can be done as follows:
 
-``` R
+``` r
 find_ird = function(
     predictor,
     x_interest,
@@ -309,7 +363,7 @@ find_ird = function(
 
 That way, the users can call the new method through the high-level interface:
 
-``` R
+``` r
 find_ird(
   predictor = predictor,
   x_interest = x_interest,
@@ -322,7 +376,7 @@ find_ird(
 )
 ```
 
-## Example using Anchors
+## Example: Integrating Anchors
 
 To illustrate how a new method can be integrated, we showcase how to include the Anchor's method [@Ribeiro2018Anchors]. Anchors is a rule-based explanation method that returns logical conditions under which the prediction remains stable.
 
@@ -330,7 +384,7 @@ In the original IRD paper [@Dandl2023IRD], Anchors are mentioned as a related hy
 
 Just as described before, Anchors can be incorporated by implemented a small number of required method classes and relying on the shared infrastructure. The Anchor class would then inherit from `RegDesMethod`, call `super$initialize()` in its constructure, store the method-specific parameters (such as the desired anchor precision `tau`) and include a private `run()` method that returns a `paradox::ParamSet` box.
 
-``` R
+``` r
 Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
   public = list(
     initialize = function(predictor,
@@ -377,13 +431,15 @@ The `run()` method must then prepare the data for the external anchors package a
 
 Once the search routine is implemented, the user can run `find_ird(..., method = "anchors")` and will obtain as a result a `RegDesc` object which could be visualized and evaluated just as shown in section \@ref(usecases).
 
+# Small comparison of IRD methods {#benchmarking}
+
 # Appendix {#appendix}
 
 ## Appendix A. Full run() implementation for Anchor Method {#appendixA}
 
 We provide a full implementation of the run() method for the Anchor class. The method makes use of the external anchors package, adapts the prediction function to the IRD setting and translates the resulting anchor conditions into a proper hyperbox representation such that it is compatible with the `irdpackage` framework.
 
-``` R
+``` r
 run = function() {
   # Prepare the data used by the external anchors backend
   if (is.null(private$obsdata)) {
