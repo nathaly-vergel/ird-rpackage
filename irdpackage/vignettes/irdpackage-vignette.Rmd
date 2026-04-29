@@ -203,33 +203,121 @@ Given that the package uses a common abstract class that handles the shared logi
 
 The `irdpackage` has been designed to be easily extensible by new IRD methods, since it uses a modular design, where all methods share a common structure but each algorithm can have its own logic in an individual method class. In this sense, new methods can be added by implementing a few required class methods and making use of shared helper functions.
 
+## Class structure
+
 All IRD methods are created as R6 classes that inherit from the base class RegDescMethod. At minimum, a new method must define two components: an `initialize()` method and a `run()` method. The initialize method stores the method-specific hyperparameters and calls the superclass constructor. The `run()` method, on the other hand, implements the actual search procedure for the IRD and returns a hyperbox in the form of a `paradox::ParamSet`. The structure of the search routine is intentionally left unrestricted, so many types of algorithms can be added.
 
-``` R
+``` r
 NewIRDMethod = R6::R6Class("NewIRDMethod", inherit = RegDescMethod,
   public = list(
-    initialize = function(predictor, my_param = 1, quiet = FALSE) {
+    initialize = function(predictor, some_param = 1, quiet = FALSE) {
       super$initialize(predictor, quiet)
-      private$my_param = my_param
+      private$some_param = some_param
     }
   ),
   private = list(
     my_param = NULL,
     run = function() {
       # use private$x_interest, private$predictor, private$desired_range, ...
+      
+      
+      
       # build and iteratively update a box
-      box = make_param_set(private$x_interest)
       # ...
-      private$.history = data.table::data.table()
-      private$.calls_fhat = 0
-      box
+      
+      # update private$.calls_fhat as predictions are made
+      # optionally store iteration details in private$.history
+      
+      return(box)
     },
     .get_parameters = function() {
-      list(my_param = private$my_param)
-    },
-    print_parameters = function() {
-      cat(" - my_param: ", private$my_param, "\n")
+      list(some_param = private$some_param)
     }
+  )
+)
+```
+
+The \$.get_parameter() method is not mandatory but still recommended, as it returns a list of all relevant hyperparameters of the method.
+
+### Implementation of the \$initialize method
+
+The `$initialize()` method defines how a new regional descriptor method is created. It must always include a `predictor` argument (which expects an `iml::Predictor`) and it should call `super$initialize(predictor, quiet)` so that all shared fields from `RegDescMethod` are initialized. If the method being implemented has any additional arguments, such as search settings or stopping criteria, they should be checked and stored in private fields so that they can be later used by the method and returned by `.get_parameters()`, when manually added.
+
+### Implementation of the search routine
+
+The core of a new IRD method lies in the implementation of the `run()` method, which is intended to perform the optimization of the box boundaries/values and returns a `paradox::ParamSet` representing the final regional descriptor.
+
+When a user calls `find_ird()` (or `find_box()` internally), the base class prepares all the necessary inputs and stores them in private fields. So the `run()` can directly use the observation of interest, the desired prediction range, the data used for evaluation, the initial box (for PostProcessing) and the maximal admissible box.
+
+The only strict requirement is that `run()` returns a valid box representation. All subsequent steps, such as wrapping the result into a `RegDesc` object or standarizing the output, are handled automatically by the base class.
+
+## Reusing shared components
+
+New methods can benefit from reusing existing functions rather than reimplementing them. The package provides a shared `helpers.R` file with useful functions to create boxes, update the boundaries, sample new candidate points or evaluating whether the predictions fall within the desired range.
+
+The use of these helpers has the purpose of allowing developers to fully focus on implementing the optimization step of their method, as well as reduing repeated code and ensuring consistency among the implemented methods.
+
+## Suggestions for integration
+
+For a seemless integration with the package, it is recommended that newly adapted methods follow the conventions of existing implementations. We advise to record diagnostic information such as the history of the optimization process and the number of model evaluations. This information is useful for analyzing, debugging and comparing IRD methods.
+
+Although this is not required, new methods can be added to the package's high-level interface (i.e. syntactic sugar functions) by extending the `find_ird()` function. This allows users to call the method using a simple parameter indicating the method's name instead of manually instantiating the object and calling `find_box()`. Such integration can be done as follows:
+
+``` R
+find_ird = function(
+    predictor,
+    x_interest,
+    
+    # Add the method's name here
+    method = c("prim", "maxbox", "maire", "newirdmethod"),
+    
+    desired_range = NULL,
+    desired_class = NULL,
+    fixed_features = NULL,
+    obsdata = NULL,
+    box_largest = NULL,
+    method_args = list()) {
+
+  method = match.arg(method)
+
+  checkmate::assert_class(predictor, "Predictor")
+  checkmate::assert_list(method_args, names = "named")
+
+  ctor_args = c(list(predictor = predictor), method_args)
+
+  method_object = switch(
+    method,
+    # Existing methods
+    "prim" = do.call(Prim$new, ctor_args),
+    "maxbox" = do.call(MaxBox$new, ctor_args),
+    "maire" = do.call(Maire$new, ctor_args),
+    
+    # Add a new case here with the R6 class that implemented the new method
+    "newirdmethod" = do.call(NewIRDMethod$new, ctor_args)
+  )
+
+  method_object$find_box(
+    x_interest = x_interest,
+    desired_range = desired_range,
+    desired_class = desired_class,
+    fixed_features = fixed_features,
+    obsdata = obsdata,
+    box_largest = box_largest
+  )
+}
+```
+
+That way, the users can call the new method through the high-level interface:
+
+``` R
+find_ird(
+  predictor = predictor,
+  x_interest = x_interest,
+  method = "newirdmethod",
+  desired_range = c(0.7, 1),
+  method_args = list(
+    some_param = 0.1,
+    quiet = TRUE
   )
 )
 ```
