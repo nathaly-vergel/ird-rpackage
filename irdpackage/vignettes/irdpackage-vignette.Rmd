@@ -1,0 +1,237 @@
+---
+title: "irdpackage: an R Package for Interpretable Regional Descriptors"
+output:
+  bookdown::html_document2: default
+  bookdown::pdf_document2: default
+vignette: >
+  %\VignetteIndexEntry{irdpackage-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bibliography_ird.bib
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(irdpackage)
+```
+
+# Introduction {#introduction}
+
+Modern machine learning models often achieve high accuracy, but this often comes at the cost of being difficult to interprete. Although such trade-off might be acceptable in settings where only predictive accuracy matters, it becomes problematic in high stakes applications, such as healthcare, finance or criminal justice, where understanding the reasoning behind an individual's prediction is required, especially for building trust and ensuring fairness.
+
+Post-hoc interpretability methods address this issue by providing explanations for complex models after they have been trained (and without having to modify their structure). Within these, two classes can be distinguished: global explanations, which characterize the overall model behaviour, and local explanations, which focus on interpreting individual predictions.
+
+The `irdpackage` implements a class of local explanation methods known as Interpretable Regional Descriptors (IRDs), introduced in @Dandl2023IRD. IRDs identify regions in a feature space around a specific data point $\text{x}'$ where the model's prediction remains unchanged. IRDs are represented as a hyperbox, that is, a Cartesian product of intervals (for numerical features) and subsets of categories (for categorical features) that contains $\text{x}'$ and ensures that all predictions within such hyperbox stay within a desired prediction range defined by the user.
+
+IRDs offer a form of *semi-factual explanation*. Instead of asking "what changes in the features would alter the prediction?", as in counterfactual explanations, they answer "how much can the input features vary while keeping the prediction the same?".
+
+The resulting hyperboxes allow for multiple types of analysis. For example, we can understand how stable a prediction is under perturbation of the input features. It is also possible to identify features whose values can vary widely without affecting the prediction, which can indicate that they are locally irrelevant. Furthermore, IRDs can be seen as a tool for model auditing, as they can reveal inconsistencies with the model or potential biases.
+
+The `irdpackage` provides a unified and extensible framework to compute IRDs using different underlying algorithms (for example, PRIM, MaxBox, MAIRE), together with a post-processing procedure that improves the quality of the resulting regions.
+
+### Contributions
+
+\<TODO\>
+
+# Methodological Background {#background}
+
+## Setup
+
+Let $\hat{f} : \mathcal{X} \rightarrow \mathbb{R}$ denote a trained prediction function and let $\text{x}' \in \mathcal{X}$ be the $p$-dimensional observation to be explained. The goal is to construct a hyperbox
+
+$$
+B = B_1 \times \dots \times B_p
+$$
+
+such that i) $\text{x}' \in B$ (locality), ii) predictions inside $B$ remain close to $\hat{f}(\text{x}')$ and iii) $B$ is as large as possible. For numeric features, $B_j = [l_j, u_j]$ and, for categorical features, $B_j \subseteq \mathcal{X}_j$.
+
+Closeness is defined via a prediction region
+
+$$
+Y' = [\hat{f}(\text{x}') - \varepsilon_L, \hat{f}(\text{x}') + \varepsilon_H]
+$$
+
+which encodes the tolerance within which predictions are considered equivalent.
+
+Notice that this formulation applies for both regression and classification tasks. In regression, the learned prediction function returns a numeric value and the desired range $Y'$ is defined as an interval of "stable" or acceptable prediction values. In classification, $\hat{f}$ can return either the score or the probability for a particular class of interest, in which case $Y'$ is a score range or a probability interval. A direct handling of hard labels is not supported.
+
+## Optimization Objective
+
+The search for an IRD is formalized as an optimization problem, where the three following criteria are used:
+
+-   Coverage mesures how much of the feature space is covered by the hyperbox $B$. Ideally, we want $B$ to be as large as possible.
+
+    $$
+    \text{coverage}(B) = \mathbb{P}(\mathbf{x} \in B \mid \mathbf{x} \in \mathcal{X})
+    $$
+
+-   Precision represents the fraction of points within $B$ whose predictions are inside $Y'$. Ideally, all points in $B$ have a prediction that falls within the user-defined range.
+
+    $$
+    \text{precision}(B) = \mathbb{P}(\hat{f}(\mathbf{x}) \in Y' \mid \mathbf{x} \in B)
+    $$
+
+-   Locality expresses whether the explicand $\text{x}'$ is contained in $B$. The hyperbox is expected to contain the $\text{x}'$, so that the explanation is relevant to the observation of interest.
+
+Since the true Data Generating Process is often unavailable, we approximate coverage and precision using a dataset $\overline{\underline{\text{X}}}$, which can either be the original dataset used to train the model (which reflects the observed distribution of the feature space) or with newly generated data points sampled uniformly within the admissible feature ranges of $\underline{\overline{B}}$, the largest local box containing $\text{x}'$.
+
+$\overline{\underline{B}}$ is constructed as the Cartesian product of the individual feature ranges (intervals or subsets) such that, when each feature is varied independently (keeping all other features constant in the values of $\text{x}'$, the model's prediction remains within $Y'$.
+
+Coverage and precision are then empirically computed as:
+
+$$ \widehat{\text{coverage}}(B) = \frac{1}{n} \sum_{i=1}^n \mathbf{1}(x_i \in B) $$
+
+$$ \widehat{\text{precision}}(B) = \frac{\sum_{i=1}^n \mathbf{1}(x_i \in B \land \hat{f}(x_i) \in Y')} {\sum_{i=1}^n \mathbf{1}(x_i \in B)} $$
+
+With this, the formal search for $B$ is operationalized as:
+
+$$
+\max_{B \subseteq \mathcal{X}} \ \widehat{\text{coverage}}(B)
+\quad \text{s.t.} \quad
+\widehat{\text{precision}}(B) = 1 \quad \text{and} \quad \text{x}' \in B
+$$
+
+That is, we aim to find the largest possible hyperbox $B$ around our point of interest $\text{x}'$ such that all predictions within $B$ are in the desired range $Y'$.
+
+## Interpretation of IRDs
+
+An IRD can be interpreted as the answer to the following question:
+
+> *To what extent can the features of a particular data point be simultaneously changed while keeping the model's prediction withing a specific range?*
+
+A valid IRD satisfies these properties: homogeneity, meaning that all points inside the hyperbox have predictions that fall withing the desired range, and maximality, which means that the hyperbox cannot be expanded further without violating precision (predictions falling outside $Y'$).
+
+These two properties allow for two interesting interpretations:
+
+1.  If a feature is locally irrelevant to the prediction, its range in the IRD will span its full observed range. This indicates that changing this feature, even to extreme values, does not affect the prediction.
+2.  If a feature is locally relevant, its range in the IRD will be highly restricted. This suggests that even small changes to this feature could push the prediction outside the desired range $Y'$.
+
+## Unified IRD Framework
+
+The general workflow to compute IRDs can be decomposed into four steps, illustrated in Figure \@ref(fig:framework-ird).
+
+```{r framework-ird, fig.cap="Figure 1. IRD framework", echo=FALSE, out.width="100%", out.height="100%", fig.align="center"}
+knitr::include_graphics("IRD_framework.pdf")
+```
+
+The search for $B$ is done by using the following steps [@Dandl2023IRD]:
+
+1.  Restriction: Define a largest feasible local box $\underline{\overline{B}}$ around $\text{x}'$, by varying each feature independently and keeping the prediction within the desired range, while all other features are fixed (resembling the construction of ICE curves).
+
+2.  Data Selection: Use training data or sampled data within $\underline{\overline{B}}$ to empirically approximate coverage and precision.
+
+3.  Initialization: Choose an initial box.
+
+    -   Top-down: start from large box (like PRIM or MaxBox)
+    -   Bottom-up: start from $\text{x}'$ (such as MAIRE)
+
+4.  Optimization: Iteratively adjust box boundaries to satisfy the objective. Each IRD method has a different implementation of this step.
+
+## IRD Methods in the Package
+
+The `irdpackage` implements several algorithms within this framework:
+
+### PRIM
+
+The Patient Rule Induction Method (PRIM) was originally proposed by @Friedman1999PRIM. It works by gradually refining a box through two main steps: peeling and pasting.
+
+-   During peeling, the box is made smaller by cutting away parts that contain points with unwanted predictions, improving the consistency of predictions inside the box.
+
+-   During pasting, the box is carefully expanded to include more points, as long as all points inside still have the desired predictions.
+
+For IRDs, PRIM was adjusted to ensure that all points inside the box have predictions strictly within the desired range (precision = 1) and the box always contains the point of interest $\text{x}'$.
+
+### MaxBox
+
+MaxBox is a method based on the *maximum box problem* from @Eckstein2002MaxBox, in which the search for a hyperbox is framed as a combinatorial optimization problem solved via branch-and-bound.
+
+The method starts with the largest possible box and gradually shrinks it by removing areas that contain points with predictions outside the desired range. To speed up the search, it calculates upper bounds on how much coverage a box can achieve, allowing it to skip less promising options early on.
+
+Within the IRD framework, MaxBox was adapted to be model-agnostic and to enforce locality by directly discarding candidate boxes that do not contain $\text{x}'$.
+
+### MAIRE
+
+The Model-Agnostic Interpretable Rule Extraction (MAIRE) is a method originally introduced by @Sharma2021MAIRE which starts from the smallest possible box (containing only $\text{x}'$) and expands it using continuous optimization. Using a differentiable surrogate of the IRD objective, the box boundaries are updated via gradient-descent.
+
+## Post-processing
+
+Since IRDs are built using a limited set of observations, this can sometimes lead to imperfect box boundaries. Sometimes, parts of the box may include predictions outside the desired range, or it could also be the case that areas just outside the box could safely be included.
+
+To refine the box, @Dandl2023IRD introduced a post-processing step inspired by PRIM, with two phases:
+
+-   Peeling: Removes subregions within the box that violate precision, using newly sampled data.
+
+-   Pasting: Expands the box by adding the largest valid subregions that maintain precision.
+
+This step improves the box’s boundaries by re-evaluating it with newly sampled data from the local search space. Empirical results from the paper show that post-processing consistently improves IRD quality when higher accuracy is needed. Notice, however, that enhancing coverage and precision comes at the cost of additional model evaluations.
+
+## On computational efficiency and immutable features
+
+Finding an IRD can be computationally demanding, especially when there are many features, because the search space grows quickly. To handle this, the framework lets users fix certain features to the values they have in $\text{x}'$, which simplifies the search.
+
+Fixing features can also have the purpose of making the resulting explanation more actionable for the person consuming the explanation. For example, some features, such as the age, are considered to be *immutable,* as can not be changed in real life. By keeping them fixed in $\text{x}'$, the IRD focuses only on features that can actually be modified by the user.
+
+# The irdpackage in R {#irdpackage}
+
+The `irdpackage` provides a unified and model-agnostic framework for computing IRDs in R.The package implements several IRD algorithms, with a standard way of defining, executing and returning them. Given a trained model and an observation of interest `x_interest`, and a prediction range, the package computes an IRD as a hyperbox that contains `x_interest` and keeps the predictions within the `desired_range`.
+
+From a user perspective, the package offers a simple interface based on two primary functions: `find_ird()` computes an IRD by selecting and running a method such as PRIM, MaxBox or MAIRE. The function `postprocess_box()` refines the learned box by applying a post-processing procedure which aims to further improve the coverage and precision.
+
+The general workflow consists on first wrapping a model in a iml::Predictor [@Molnar2018IML] and then executing a particular method through the `find_ird()` function by feeding it the `x_interest`, the desired prediction range, the method's parameters and some optional constraints. Since the Predictor object provides a common prediction interface, the package works with any machine learning model trained with different frameworks (such as `mlr3` \@[@Lang2019mlr3] or even a custom model), as long as they can be wrapped using `iml:Predictor`.
+
+The resulting hyperbox is always returned as a `RegDesc` object, which can be inspected, evaluated and visualized.
+
+Inspired by the `counterfactuals` package [@Dandl2023Counterfactuals], `irdpackage` is built based on an R6 arquitecture @Chang2021R6, in which all IRD methods inherit from a common abstract base class called `RegDescMethod`. This class does input validation, detects the task (regression versus classification settings), manages the user's constraints such as the fixed features and wraps the final result in a standarized output object. Each concrete method only implements its own search procedure in `private$run()`.
+
+Internally, regional descriptors are represented using paradox::ParamSet objects [@Lang2022Paradox]: numeric features are described by intervals and categorical features by subsets of levels. Parameters with integer domain are also supported.
+
+The output of every method is a `RegDesc` object, which is the standarized result container. It stores the final box, the predictor, the observation of interest, the desired prediction range or class, the set of fixed (immutable) features along with the method-specific metadata and optimization history. Users can print the descriptor, evaluate its quality by assessing the metrics using sampling or the training data, and also visualize the IRD projected onto a 2D prediction surface.
+
+Notice that the package is inherently model-agnostic. By relying on iml::Predictor, all methods can interact and probe the model using a unified prediction interface, which is independent of how the model was trained or the prediction task. Furthermore, the package is designed to support actionability constraints via the `fixed_features` argument, which both ensures that certain variables remain unchanged and reduces also the search space (and, consequently, the computational cost).
+
+Given that the package uses a common abstract class that handles the shared logic and the individual algorithms only implement their specific search routine, the `irdpackage` can be easily extended to new methods, as will be explored in section \<TODO\>.
+
+# Use cases {#usecases}
+
+# How to extend the package {#extension}
+
+The `irdpackage` has been designed to be easily extensible by new IRD methods, since it uses a modular design, where all methods share a common structure but each algorithm can have its own logic in an individual method class. In this sense, new methods can be added by implementing a few required class methods and making use of shared helper functions.
+
+All IRD methods are created as R6 classes that inherit from the base class RegDescMethod. At minimum, a new method must define two components: an `initialize()` method and a `run()` method. The initialize method stores the method-specific hyperparameters and calls the superclass constructor. The `run()` method, on the other hand, implements the actual search procedure for the IRD and returns a hyperbox in the form of a `paradox::ParamSet`. The structure of the search routine is intentionally left unrestricted, so many types of algorithms can be added.
+
+``` R
+NewIRDMethod = R6::R6Class("NewIRDMethod", inherit = RegDescMethod,
+  public = list(
+    initialize = function(predictor, my_param = 1, quiet = FALSE) {
+      super$initialize(predictor, quiet)
+      private$my_param = my_param
+    }
+  ),
+  private = list(
+    my_param = NULL,
+    run = function() {
+      # use private$x_interest, private$predictor, private$desired_range, ...
+      # build and iteratively update a box
+      box = make_param_set(private$x_interest)
+      # ...
+      private$.history = data.table::data.table()
+      private$.calls_fhat = 0
+      box
+    },
+    .get_parameters = function() {
+      list(my_param = private$my_param)
+    },
+    print_parameters = function() {
+      cat(" - my_param: ", private$my_param, "\n")
+    }
+  )
+)
+```
+
+# References {#references}

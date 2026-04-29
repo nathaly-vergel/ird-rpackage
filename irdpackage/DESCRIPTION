@@ -28,6 +28,7 @@ Suggests:
     anchors,
     knitr,
     rmarkdown,
+    bookdown,
     MASS,
     StatMatch,
     testthat (>= 3.0.0),
@@ -42,3 +43,4 @@ RoxygenNote: 7.3.3
 Remotes:
   viadee/anchorsOnR
 Config/testthat/edition: 3
+VignetteBuilder: knitr
