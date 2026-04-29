@@ -34,12 +34,12 @@ RegDescMethod = R6::R6Class("RegDescMethod",
 
     #' @description
     #' Prints a `RegDescMethod` object.
-    #' The method calls a (private) `$print_parameters()` method which should be
-    #' implemented by the leaf classes.
+    #' The method prints the named list returned by `$get_parameters()`.
     print = function() {
       cat("Regional descriptor method: ", class(self)[1], "\n")
       cat("Parameters:\n")
-      private$print_parameters()
+      private$print_parameters(private$.get_parameters())
+      invisible(self)
     },
     #' @description
     #' Returns the method hyperparameters as a named list.
@@ -289,6 +289,28 @@ RegDescMethod = R6::R6Class("RegDescMethod",
     .get_parameters = function() {
       list()
     },
-    print_parameters = function() {}
+    print_parameters = function(params) {
+      if (length(params) == 0L) {
+        cat(" - none\n")
+        return(invisible(self))
+      }
+
+      for (nm in names(params)) {
+        cat(" - ", nm, ": ", private$format_parameter(params[[nm]]), "\n", sep = "")
+      }
+
+      invisible(self)
+    },
+    format_parameter = function(value) {
+      if (is.null(value)) {
+        return("NULL")
+      }
+
+      if (length(value) > 1L) {
+        return(paste(value, collapse = ", "))
+      }
+
+      as.character(value)
+    }
   )
 )
