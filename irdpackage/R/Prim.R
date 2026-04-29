@@ -393,6 +393,9 @@ Prim = R6::R6Class("Prim", inherit = RegDescMethod,
       searchspace = searchspace[lapply(searchspace, length) > 0]
       return(searchspace)
     },
+    print_parameters = function() {
+      cat(" - subbox_relsize: ", private$subbox_relsize, "\n")
+    },
     .get_parameters = function() {
       list(
         subbox_relsize = private$subbox_relsize

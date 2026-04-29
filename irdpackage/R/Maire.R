@@ -603,6 +603,11 @@ Maire = R6::R6Class("Maire",
     A = function(x) {
       return(private$step_function(tf$reduce_mean(x, 1L) - private$ch))
     },
+    print_parameters = function() {
+      # cat(" - searchgrid_resolution: ", private$searchgrid_resolution, "\n")
+      # cat(" - evaluation_n: ", private$evaluation_n, "\n")
+      # cat(" - paste_alpha: ", private$paste_alpha, "\n")
+    },
     .get_parameters = function() {
       list(
         num_of_iterations = private$num_of_iterations,

@@ -109,18 +109,3 @@ test_that("own dataset and largest local box could be used", {
   expect_true(postproc$calls_fhat > nrow(sampled)+1L)
 })
 
-test_that("method parameters are sourced from get_parameters and printed by the base class", {
-  obj = make_test_obj_mixed(task = "regression")
-  prim = Prim$new(obj$predictor, subbox_relsize = 0.2, quiet = TRUE)
-
-  expect_equal(
-    prim$get_parameters(),
-    list(subbox_relsize = 0.2)
-  )
-
-  expect_output(
-    prim$print(),
-    "subbox_relsize: 0.2"
-  )
-})
-

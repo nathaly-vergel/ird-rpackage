@@ -605,6 +605,11 @@ PostProcessing = R6::R6Class("PostProcessing", inherit = RegDescMethod,
       private$searchspace[[var]] = s[lapply(s, length) > 0]
       private$searchspace = private$searchspace[lapply(private$searchspace, length) > 0]
     },
+    print_parameters = function() {
+      cat(" - subbox_relsize: ", private$subbox_relsize, "\n")
+      cat(" - evaluation_n: ", private$evaluation_n, "\n")
+      cat(" - paste_alpha: ", private$paste_alpha, "\n")
+    },
     .get_parameters = function() {
       list(
         subbox_relsize = private$subbox_relsize,

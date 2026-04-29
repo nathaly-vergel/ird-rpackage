@@ -34,12 +34,12 @@ RegDescMethod = R6::R6Class("RegDescMethod",
 
     #' @description
     #' Prints a `RegDescMethod` object.
-    #' Hyperparameters are obtained from the method-specific
-    #' `.get_parameters()` implementation and rendered by the base class.
+    #' The method calls a (private) `$print_parameters()` method which should be
+    #' implemented by the leaf classes.
     print = function() {
       cat("Regional descriptor method: ", class(self)[1], "\n")
       cat("Parameters:\n")
-      private$print_parameters(private$.get_parameters())
+      private$print_parameters()
     },
     #' @description
     #' Returns the method hyperparameters as a named list.
@@ -304,58 +304,12 @@ RegDescMethod = R6::R6Class("RegDescMethod",
 
       return(new_box)
     },
-    format_parameter_value = function(value) {
-      if (is.null(value)) {
-        return("NULL")
-      }
-
-      if (is.atomic(value) && length(value) == 0L) {
-        return(if (is.character(value)) 'character(0)' else paste0(typeof(value), "(0)"))
-      }
-
-      if (is.atomic(value) && length(value) == 1L) {
-        return(as.character(value))
-      }
-
-      if (is.atomic(value)) {
-        return(paste0("c(", paste(as.character(value), collapse = ", "), ")"))
-      }
-
-      if (is.list(value)) {
-        if (length(value) == 0L) {
-          return("list()")
-        }
-
-        parts = vapply(value, private$format_parameter_value, FUN.VALUE = character(1L))
-        if (!is.null(names(value)) && any(nzchar(names(value)))) {
-          nms = names(value)
-          nms[!nzchar(nms)] = "<unnamed>"
-          parts = paste0(nms, " = ", parts)
-        }
-        return(paste0("list(", paste(parts, collapse = ", "), ")"))
-      }
-
-      paste(capture.output(str(value, give.attr = FALSE)), collapse = " ")
-    },
     run = function() {
       stop("Abstract base class")
     },
     .get_parameters = function() {
-      stop("Subclasses must implement `.get_parameters()`.", call. = FALSE)
+      list()
     },
-    print_parameters = function(parameters) {
-      assert_list(parameters, names = "named")
-
-      if (length(parameters) == 0L) {
-        cat(" - <none>\n")
-        return(invisible(NULL))
-      }
-
-      for (param_name in names(parameters)) {
-        cat(" - ", param_name, ": ", private$format_parameter_value(parameters[[param_name]]), "\n", sep = "")
-      }
-
-      invisible(NULL)
-    }
+    print_parameters = function() {}
   )
 )
