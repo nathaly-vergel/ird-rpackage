@@ -322,4 +322,266 @@ find_ird(
 )
 ```
 
+## Example using Anchors
+
+To illustrate how a new method can be integrated, we showcase how to include the Anchor's method [@Ribeiro2018Anchors]. Anchors is a rule-based explanation method that returns logical conditions under which the prediction remains stable.
+
+In the original IRD paper [@Dandl2023IRD], Anchors are mentioned as a related hyperbox-based method, which works as a limited baseline for IRDs given that their search space is restricted because features can only be fixed to the value of the observation, left free or constrained by some pre-defined bins for numerical features. This can result in boxes that are too specific and cover too few observations, and the bins can not be adjusted during optimization. Because of these limitations, the package does not treat Anchors as a fully adapted IRD method like PRIM, MaxBox or MAIRE. But it can be adapted to showcase how an external method can be integrated into the `irdpackage` framework.
+
+Just as described before, Anchors can be incorporated by implemented a small number of required method classes and relying on the shared infrastructure. The Anchor class would then inherit from `RegDesMethod`, call `super$initialize()` in its constructure, store the method-specific parameters (such as the desired anchor precision `tau`) and include a private `run()` method that returns a `paradox::ParamSet` box.
+
+``` R
+Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
+  public = list(
+    initialize = function(predictor,
+                          tau = 1,
+                          initialize_bins = TRUE,
+                          bins = NULL,
+                          quiet = FALSE,
+                          ...) {
+
+      if (!requireNamespace("anchors", quietly = TRUE)) {
+        stop("Package 'anchors' is required to use the Anchor method.",
+          call. = FALSE)
+      }
+
+      super$initialize(predictor, quiet)
+
+      if (is.null(bins) && initialize_bins) {
+        bins = private$initialize_bins()
+      }
+
+      private$bins = bins
+      private$tau = tau
+      private$argsanchors = list(...)
+    }
+  ),
+  private = list(
+    run = function() {
+      # Prepare data and fixed features
+      # Call anchors::anchors() and anchors::explain()
+      # Convert the anchor conditions into a ParamSet box
+      # Return the box
+    },
+    .get_parameters = function() {
+      list(
+        tau = private$tau,
+        bins = private$bins
+        )
+    }
+  )
+)
+```
+
+The `run()` method must then prepare the data for the external anchors package and set `fixed_features` to the values of `x_interest`. Also, since IRDs are defined by a desired prediction range, the prediction interface is adjusted so the external method receives a binary target indicating whether a prediction is within the desired range. Finally, the anchor conditions returned by `anchors::explain()` are converted into a hyperbox: interval conditions become numerical bounds and set conditions become allowed categories. The full implementation is omitted from the main text for readability but is given in the Appendix \@ref(appendixA).
+
+Once the search routine is implemented, the user can run `find_ird(..., method = "anchors")` and will obtain as a result a `RegDesc` object which could be visualized and evaluated just as shown in section \@ref(usecases).
+
+# Appendix {#appendix}
+
+## Appendix A. Full run() implementation for Anchor Method {#appendixA}
+
+We provide a full implementation of the run() method for the Anchor class. The method makes use of the external anchors package, adapts the prediction function to the IRD setting and translates the resulting anchor conditions into a proper hyperbox representation such that it is compatible with the `irdpackage` framework.
+
+``` R
+run = function() {
+  # Prepare the data used by the external anchors backend
+  if (is.null(private$obsdata)) {
+    private$obsdata = copy(private$predictor$data$get.xy())
+  } else {
+    private$.calls_fhat = private$.calls_fhat + nrow(private$obsdata)
+    private$obsdata[[private$predictor$data$y.names]] =
+      private$predictor$predict(private$obsdata)[[1]]
+  }
+
+  # Add the observation of interest to the data
+  xinterest = copy(private$x_interest)
+  xinterest[[private$predictor$data$y.names]] = private$f_hat_interest[[1]]
+  private$obsdata = rbind(xinterest, private$obsdata)
+
+  current_box = private$param_set
+
+  # Enforce fixed features by fixing both the data and the current box
+  if (!is.null(private$fixed_features)) {
+    fixed_features = private$fixed_features
+    private$obsdata[, (fixed_features) :=
+      private$x_interest[, fixed_features, with = FALSE]]
+
+    if (!is.null(private$bins[fixed_features])) {
+      for (ff in fixed_features) {
+        private$bins[[ff]] = integer()
+
+        if (private$predictor$data$feature.types[ff] == "numerical") {
+          current_box = update_box(
+            current_box,
+            j = ff,
+            lower = private$x_interest[[ff]],
+            upper = private$x_interest[[ff]],
+            complement = FALSE
+          )
+        } else {
+          current_box = update_box(
+            current_box,
+            j = ff,
+            val = private$x_interest[[ff]],
+            complement = FALSE
+          )
+        }
+      }
+    }
+  }
+
+  # Initialize the external anchors explainer
+  explainer = do.call(
+    anchors::anchors,
+    c(
+      list(
+        x = private$obsdata,
+        model = private$predictor,
+        bins = private$bins,
+        tau = private$tau,
+        target = private$predictor$data$y.names,
+        verbose = !private$quiet
+      ),
+      private$argsanchors
+    )
+  )
+
+  # Adapt the prediction interface expected by anchors
+  # The target is whether predictions fall inside desired_range
+  predict_model.Predictor <<- function(x, newdata, type, ...) {
+    private$.calls_fhat = private$.calls_fhat + nrow(newdata)
+    predict_range(x, newdata = newdata, range = private$desired_range)
+  }
+
+  model_type.Predictor <<- function(x, ...) {
+    "classification"
+  }
+
+  # Run the anchor explanation.
+  if (private$quiet) {
+    explanations = try(
+      suppressMessages(
+        anchors::explain(private$x_interest, explainer, labels = 1)
+      ),
+      silent = TRUE
+    )
+  } else {
+    explanations = try(
+      anchors::explain(private$x_interest, explainer),
+      silent = TRUE
+    )
+  }
+
+  if (inherits(explanations, "try-error")) {
+    closeAllConnections()
+
+    stop(
+      "The Anchor method failed while calling `anchors::explain()`. ",
+      "This can happen because the external anchors backend is stochastic ",
+      "and may fail for some random states. ",
+      "Please try running the method again, or set a different seed before ",
+      "calling `$find_box()`.\n\n",
+      "Original error:\n",
+      conditionMessage(attr(explanations, "condition")),
+      call. = FALSE
+    )
+  }
+
+  private$.history = explanations
+
+  # Translate the returned anchor into the IRD box representation
+  if (is.null(private$bins)) {
+    for (feat in explanations$feature) {
+      if (feat == "base") next
+
+      val = private$x_interest[[feat]]
+
+      if (private$predictor$data$feature.types[[feat]] == "categorical") {
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          val = as.character(val),
+          complement = FALSE
+        )
+      } else {
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          lower = val,
+          upper = val,
+          complement = FALSE
+        )
+      }
+    }
+  } else {
+    for (expr in explanations$feature_desc) {
+      if (is.na(expr)) next
+
+      feat = gsub("(.+?)( [IN|=].*)", "\\1", expr)
+      if (feat %in% private$fixed_features) next
+
+      operator = gsub("(.+?IN )(.)(.*)", "\\2", expr)
+
+      if (operator == "[") {
+        val1 = gsub("(.+?\\[)(.+?)(,.*)", "\\2", expr)
+        val2 = gsub("(.+?\\[.+?,)(.+?)(\\).*)", "\\2", expr)
+        val = as.numeric(c(val1, val2))
+
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          lower = val[1],
+          upper = val[2],
+          complement = FALSE
+        )
+      } else if (operator == ">") {
+        val = gsub("(.+?)(>=)(.+?)", "\\3", expr)
+
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          lower = as.numeric(val),
+          complement = FALSE
+        )
+      } else if (operator == "<") {
+        val = gsub("(.+?)(<=)(.+?)", "\\3", expr)
+
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          upper = as.numeric(val),
+          complement = FALSE
+        )
+      } else if (operator == "{") {
+        val = gsub("(.+?\\{)(.+?)(\\}.*)", "\\2", expr)
+
+        if (grepl(",", val)) {
+          val = eval(parse(text = paste0("c(", val, ")")))
+        }
+
+        if (private$param_set$is_number[[feat]]) {
+          current_box = update_box(
+            current_box = current_box,
+            j = feat,
+            lower = min(val),
+            upper = max(val),
+            complement = FALSE
+          )
+        }
+
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          val = val,
+          complement = FALSE
+        )
+      }
+    }
+  }
+
+  current_box
+}
+```
+
 # References {#references}
