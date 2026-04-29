@@ -603,27 +603,6 @@ Maire = R6::R6Class("Maire",
     A = function(x) {
       return(private$step_function(tf$reduce_mean(x, 1L) - private$ch))
     },
-    print_parameters = function() {
-      params = private$.get_parameters()
-
-      if (length(params) == 0L) {
-        cat(" - none\n")
-        return(invisible(self))
-      }
-
-      for (nm in names(params)) {
-        value = params[[nm]]
-
-        if (is.null(value)) {
-          value = "NULL"
-        } else if (length(value) > 1L) {
-          value = paste(value, collapse = ", ")
-        }
-        cat(" - ", nm, ": ", value, "\n", sep = "")
-      }
-
-      invisible(self)
-    },
     .get_parameters = function() {
       list(
         num_of_iterations = private$num_of_iterations,
