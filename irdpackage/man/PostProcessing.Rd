@@ -76,10 +76,14 @@ changes.
 Default is `0.05`.}
 
 \item{\code{evaluation_n}}{(`numeric(1)`) \cr
-Number of newly sampled points used to evaluate each candidate box or
-subbox.
-Larger values give more stable estimates of impurity and prediction
-distance but increase computation time.}
+  Number of newly sampled points used to evaluate each candidate box or
+  subbox during peeling and pasting.
+  Larger values give more stable estimates of impurity and prediction
+  distance but increase computation time.
+
+  For the initial homogeneity check of the starting box, a larger sample
+  is used internally, namely `evaluation_n * p`, where `p` is the number
+  of (non-fixed) features.}
 
 \item{\code{paste_alpha}}{(`numeric(1)`) \cr
 Minimum relative step size allowed during the pasting phase.

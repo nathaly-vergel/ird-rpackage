@@ -13,6 +13,11 @@ For details on the original method, see
 \href{https://ojs.aaai.org/index.php/AAAI/article/view/11491}{Ribeiro et al. (2018)}.
 The R implementation can be found at
 \href{https://github.com/viadee/anchorsOnR}{anchorsOnR repository}.
+
+
+This method relies on the external `anchors` backend, which is stochastic and
+may fail for some random states. If this happens, rerun the method or try a
+different seed before calling `$find_box()`.
 }
 \section{Super class}{
 \code{\link[irdpackage:RegDescMethod]{irdpackage::RegDescMethod}} -> \code{Anchor}
