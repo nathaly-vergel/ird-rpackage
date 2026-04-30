@@ -1,13 +1,26 @@
 ---
 title: "irdpackage: an R Package for Interpretable Regional Descriptors"
 output:
-  bookdown::pdf_document2: default
-  bookdown::html_document2: default
+  bookdown::pdf_document2:
+    toc: true
+    number_sections: true
+    latex_engine: xelatex
+  bookdown::html_document2:
+    toc: true
+    number_sections: true
 vignette: >
   %\VignetteIndexEntry{irdpackage-vignette}
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
 bibliography: bibliography_ird.bib
+link-citations: true
+colorlinks: true
+linkcolor: blue
+citecolor: blue
+urlcolor: blue
+header-includes:
+  - \usepackage{titlesec}
+  - \titlelabel{\thetitle.\quad}
 ---
 
 ```{r, include = FALSE}
@@ -73,7 +86,7 @@ The search for an IRD is formalized as an optimization problem, where the three 
 
 Since the true Data Generating Process is often unavailable, we approximate coverage and precision using a dataset $\overline{\underline{\text{X}}}$, which can either be the original dataset used to train the model (which reflects the observed distribution of the feature space) or with newly generated data points sampled uniformly within the admissible feature ranges of $\underline{\overline{B}}$, the largest local box containing $\text{x}'$.
 
-$\overline{\underline{B}}$ is constructed as the Cartesian product of the individual feature ranges (intervals or subsets) such that, when each feature is varied independently (keeping all other features constant in the values of $\text{x}'$, the model's prediction remains within $Y'$.
+$\overline{\underline{B}}$ is constructed as the Cartesian product of the individual feature ranges (intervals or subsets) such that, when each feature is varied independently (keeping all other features constant in the values of $\text{x}'$), the model's prediction remains within $Y'$.
 
 Coverage and precision are then empirically computed as:
 
@@ -179,10 +192,12 @@ The general workflow consists on first wrapping a model in a `iml::Predictor` [@
 
 The resulting hyperbox is always returned as a `RegDesc` object, which can be inspected, evaluated and visualized.
 
-Inspired by the `counterfactuals` package [@Dandl2023Counterfactuals], `irdpackage` is built based on an R6 architecture @Chang2021R6, in which all IRD methods inherit from a common abstract base class called `RegDescMethod`. This class does input validation, detects the task (regression versus classification settings), manages the user's constraints such as the fixed features and wraps the final result in a standardized output object. Each concrete method only implements its own search procedure in `private$run()`. This workflow can be seen in Figure \@ref(fig:call-graph), inspired by Figure 2 of the `counterfactuals` vignette [@Dandl2023Counterfactuals].
+Inspired by the `counterfactuals` package [@Dandl2023Counterfactuals], `irdpackage` is built based on an R6 architecture @Chang2021R6, in which all IRD methods inherit from a common abstract base class called `RegDescMethod`. This class does input validation, detects the task (regression versus classification settings), manages the user's constraints such as the fixed features and wraps the final result in a standardized output object. Each concrete method only implements its own search procedure in `private$run()`.
 
-```{r call-graph, fig.cap="Call graph of the `irdpackage`. The `find_ird()` function (1) calls the `$find_box()` method implemented by the selected IRD method (an R6 class inheriting from `RegDescMethod`), which performs the search for a regional descriptor. The method (2) returns the resulting hyperbox, which is then wrapped by `find_ird()` into a `RegDesc` object (3). The `RegDesc` object stores the descriptor together with relevant metadata and provides methods for evaluation and visualization. .", echo=FALSE, out.width="0.8\\textwidth", fig.align="center"}
-knitr::include_graphics("Call_graph.pdf")
+This workflow can be seen in Figure \@ref(fig:call-graph), inspired by Figure 2 of the `counterfactuals` vignette [@Dandl2023Counterfactuals].
+
+```{r call-graph, fig.cap="Call graph of the irdpackage", echo=FALSE, out.width="0.8\\textwidth", fig.align="center"}
+knitr::include_graphics("Call_graph_final.pdf")
 ```
 
 Internally, regional descriptors are represented using paradox::ParamSet objects [@Lang2022Paradox]: numeric features are described by intervals and categorical features by subsets of levels. Parameters with integer domain are also supported.
@@ -199,7 +214,7 @@ To illustrate the workflow of the package, we use the German Credit data and a c
 
 The example makes use of several R packages. We use `mlr3` to define the classification task, `mlr3learners` to train a `ranger` random forest model and `iml` to wrap the fitted model in a common prediction interface.
 
-```{r setup}
+```{r setup, warning = FALSE, message=FALSE}
 
 library("mlr3")
 library("mlr3learners")
@@ -225,9 +240,8 @@ For this example, we work with a version of the data that includes features such
 The dataset comes from the UCI Machine Learning Repository, where it was first included as part of the Statlog (German Credit) data collection [@dua2017uci]. A widely used processed version of this dataset is also available on Kaggle [@ferreira2018german], which offers a cleaned version of the original data.
 
 ```{r load-data}
-
 credit = read.csv(
-  "../inst/examples/data/german_credit_data.csv",
+  system.file("examples/data/german_credit_data.csv", package = "irdpackage"),
   row.names = 1,
   stringsAsFactors = TRUE
 )
@@ -264,10 +278,9 @@ credit$checking.account = as.ordered(credit$checking.account)
 
 We can now inspect the structure of the cleaned data.
 
-```{r credit-data}
-knitr::kable(credit[1:5, ], caption = "The German credit data.")
-str(credit)
-
+```{r credit-data, echo = FALSE}
+print(str(credit))
+knitr::kable(credit[1:5, ], caption = "The German credit data. First five rows.")
 ```
 
 We then define one observation of interest, `x_interest`. This corresponds to a young woman applying for a car loan. In the code, we set the credit amount to `4000`, the purpose to `car`, the housing type to `rent` and the loan `duration` to 30 months.
@@ -791,6 +804,8 @@ Once the search routine is implemented, the user can run `find_ird(..., method =
 
 # Small comparison of IRD methods {#benchmarking}
 
+## Setup and metrics
+
 In this section, we briefly compare the three main methods implemented in the package: PRIM, MaxBox and MAIRE. For this, we use the same set up as before: the same dataset, same trained model, the same observation of interest and the same desired prediction range. All methods are run with the default parameters.
 
 For each method, we will compute the initial IRD, then apply post-processing and compare the results using a few practical metrics.
@@ -898,7 +913,6 @@ summarise_descriptor = function(method,
     total_time_sec = total_runtime,
     impurity = unname(sampled_eval[["impurity"]]),
     dist = unname(sampled_eval[["dist"]]),
-    train_precision = unname(train_eval[["precision"]]),
     train_coverage = unname(train_eval[["coverage"]]),
     sampled_coverage = sampled_cov,
     stage_calls_fhat = result$calls_fhat,
@@ -966,7 +980,7 @@ postprocess_method = function(label, initial) {
 
 ### Initial descriptors
 
-```{r bm-initial, echo = FALSE, warning=FALSE, message = FALSE}
+```{r bm-initial, out.width="0.92\\textwidth", echo = FALSE, warning=FALSE, message = FALSE}
 
 initial_results = Map(fit_method, names(method_specs), method_specs)
 
@@ -980,7 +994,6 @@ cols_to_round = c(
   "total_time_sec",
   "impurity",
   "dist",
-  "train_precision",
   "train_coverage",
   "sampled_coverage"
 )
@@ -1039,7 +1052,7 @@ Following from the metrics, we observe that PRIM gives broader, more permissive 
 
 Let us now explore the result after the hyperboxes have been refined using post-processing.
 
-```{r bm-post}
+```{r bm-post, out.width="0.92\\textwidth"}
 post_results = Map(
   postprocess_method,
   names(initial_results),
