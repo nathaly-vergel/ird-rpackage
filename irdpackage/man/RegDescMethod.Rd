@@ -63,8 +63,7 @@ Should information about the optimization status be hidden? Default is FALSE.}
 \if{latex}{\out{\hypertarget{method-RegDescMethod-print}{}}}
 \subsection{Method \code{print()}}{
 Prints a `RegDescMethod` object.
-The method calls a (private) `$print_parameters()` method which should be
-implemented by the leaf classes.
+The method prints the named list returned by `$get_parameters()`.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RegDescMethod$print()}\if{html}{\out{</div>}}
 }

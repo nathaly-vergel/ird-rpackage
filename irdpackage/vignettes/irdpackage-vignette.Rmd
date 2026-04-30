@@ -1,13 +1,26 @@
 ---
 title: "irdpackage: an R Package for Interpretable Regional Descriptors"
 output:
-  bookdown::html_document2: default
-  bookdown::pdf_document2: default
+  bookdown::pdf_document2:
+    toc: true
+    number_sections: true
+    latex_engine: xelatex
+  bookdown::html_document2:
+    toc: true
+    number_sections: true
 vignette: >
   %\VignetteIndexEntry{irdpackage-vignette}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
 bibliography: bibliography_ird.bib
+link-citations: true
+colorlinks: true
+linkcolor: blue
+citecolor: blue
+urlcolor: blue
+header-includes:
+  - \usepackage{titlesec}
+  - \titlelabel{\thetitle.\quad}
 ---
 
 ```{r, include = FALSE}
@@ -17,13 +30,9 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r setup}
-library(irdpackage)
-```
-
 # Introduction {#introduction}
 
-Modern machine learning models often achieve high accuracy, but this often comes at the cost of being difficult to interprete. Although such trade-off might be acceptable in settings where only predictive accuracy matters, it becomes problematic in high stakes applications, such as healthcare, finance or criminal justice, where understanding the reasoning behind an individual's prediction is required, especially for building trust and ensuring fairness.
+Modern machine learning models often achieve high accuracy, but this often comes at the cost of being difficult to interpret. Although such trade-off might be acceptable in settings where only predictive accuracy matters, it becomes problematic in high stakes applications, such as healthcare, finance or criminal justice, where understanding the reasoning behind an individual's prediction is required, especially for building trust and ensuring fairness.
 
 Post-hoc interpretability methods address this issue by providing explanations for complex models after they have been trained (and without having to modify their structure). Within these, two classes can be distinguished: global explanations, which characterize the overall model behaviour, and local explanations, which focus on interpreting individual predictions.
 
@@ -34,10 +43,6 @@ IRDs offer a form of *semi-factual explanation*. Instead of asking "what changes
 The resulting hyperboxes allow for multiple types of analysis. For example, we can understand how stable a prediction is under perturbation of the input features. It is also possible to identify features whose values can vary widely without affecting the prediction, which can indicate that they are locally irrelevant. Furthermore, IRDs can be seen as a tool for model auditing, as they can reveal inconsistencies with the model or potential biases.
 
 The `irdpackage` provides a unified and extensible framework to compute IRDs using different underlying algorithms (for example, PRIM, MaxBox, MAIRE), together with a post-processing procedure that improves the quality of the resulting regions.
-
-### Contributions
-
-\<TODO\>
 
 # Methodological Background {#background}
 
@@ -65,7 +70,7 @@ Notice that this formulation applies for both regression and classification task
 
 The search for an IRD is formalized as an optimization problem, where the three following criteria are used:
 
--   Coverage mesures how much of the feature space is covered by the hyperbox $B$. Ideally, we want $B$ to be as large as possible.
+-   Coverage measures how much of the feature space is covered by the hyperbox $B$. Ideally, we want $B$ to be as large as possible.
 
     $$
     \text{coverage}(B) = \mathbb{P}(\mathbf{x} \in B \mid \mathbf{x} \in \mathcal{X})
@@ -81,7 +86,7 @@ The search for an IRD is formalized as an optimization problem, where the three 
 
 Since the true Data Generating Process is often unavailable, we approximate coverage and precision using a dataset $\overline{\underline{\text{X}}}$, which can either be the original dataset used to train the model (which reflects the observed distribution of the feature space) or with newly generated data points sampled uniformly within the admissible feature ranges of $\underline{\overline{B}}$, the largest local box containing $\text{x}'$.
 
-$\overline{\underline{B}}$ is constructed as the Cartesian product of the individual feature ranges (intervals or subsets) such that, when each feature is varied independently (keeping all other features constant in the values of $\text{x}'$, the model's prediction remains within $Y'$.
+$\overline{\underline{B}}$ is constructed as the Cartesian product of the individual feature ranges (intervals or subsets) such that, when each feature is varied independently (keeping all other features constant in the values of $\text{x}'$), the model's prediction remains within $Y'$.
 
 Coverage and precision are then empirically computed as:
 
@@ -103,7 +108,7 @@ That is, we aim to find the largest possible hyperbox $B$ around our point of in
 
 An IRD can be interpreted as the answer to the following question:
 
-> *To what extent can the features of a particular data point be simultaneously changed while keeping the model's prediction withing a specific range?*
+> *To what extent can the features of a particular data point be simultaneously changed while keeping the model's prediction within a specific range?*
 
 A valid IRD satisfies these properties: homogeneity, meaning that all points inside the hyperbox have predictions that fall withing the desired range, and maximality, which means that the hyperbox cannot be expanded further without violating precision (predictions falling outside $Y'$).
 
@@ -116,7 +121,7 @@ These two properties allow for two interesting interpretations:
 
 The general workflow to compute IRDs can be decomposed into four steps, illustrated in Figure \@ref(fig:framework-ird).
 
-```{r framework-ird, fig.cap="Figure 1. IRD framework", echo=FALSE, out.width="100%", out.height="100%", fig.align="center"}
+```{r framework-ird, fig.cap="IRD framework.", echo=FALSE, out.width="0.92\\textwidth", fig.align="center"}
 knitr::include_graphics("IRD_framework.pdf")
 ```
 
@@ -175,63 +180,1129 @@ This step improves the box’s boundaries by re-evaluating it with newly sampled
 
 Finding an IRD can be computationally demanding, especially when there are many features, because the search space grows quickly. To handle this, the framework lets users fix certain features to the values they have in $\text{x}'$, which simplifies the search.
 
-Fixing features can also have the purpose of making the resulting explanation more actionable for the person consuming the explanation. For example, some features, such as the age, are considered to be *immutable,* as can not be changed in real life. By keeping them fixed in $\text{x}'$, the IRD focuses only on features that can actually be modified by the user.
+Fixing features can also have the purpose of making the resulting explanation more actionable for the person consuming the explanation. For example, some features, such as the age, are considered to be *immutable,* as they can not be changed in real life. By keeping them fixed in $\text{x}'$, the IRD focuses only on features that can actually be modified by the user.
 
 # The irdpackage in R {#irdpackage}
 
-The `irdpackage` provides a unified and model-agnostic framework for computing IRDs in R.The package implements several IRD algorithms, with a standard way of defining, executing and returning them. Given a trained model and an observation of interest `x_interest`, and a prediction range, the package computes an IRD as a hyperbox that contains `x_interest` and keeps the predictions within the `desired_range`.
+The `irdpackage` provides a unified and model-agnostic framework for computing IRDs in R. The package implements several IRD algorithms, with a standard way of defining, executing and returning them. Given a trained model and an observation of interest `x_interest`, and a prediction range, the package computes an IRD as a hyperbox that contains `x_interest` and keeps the predictions within the `desired_range`.
 
 From a user perspective, the package offers a simple interface based on two primary functions: `find_ird()` computes an IRD by selecting and running a method such as PRIM, MaxBox or MAIRE. The function `postprocess_box()` refines the learned box by applying a post-processing procedure which aims to further improve the coverage and precision.
 
-The general workflow consists on first wrapping a model in a iml::Predictor [@Molnar2018IML] and then executing a particular method through the `find_ird()` function by feeding it the `x_interest`, the desired prediction range, the method's parameters and some optional constraints. Since the Predictor object provides a common prediction interface, the package works with any machine learning model trained with different frameworks (such as `mlr3` \@[@Lang2019mlr3] or even a custom model), as long as they can be wrapped using `iml:Predictor`.
+The general workflow consists on first wrapping a model in a `iml::Predictor` [@Molnar2018IML] and then executing a particular method through the `find_ird()` function by feeding it the `x_interest`, the desired prediction range, the method's parameters and some optional constraints. Since the Predictor object provides a common prediction interface, the package works with any machine learning model trained with different frameworks (such as `mlr3` [@Lang2019mlr3] or even a custom model), as long as they can be wrapped using `iml::Predictor`.
 
 The resulting hyperbox is always returned as a `RegDesc` object, which can be inspected, evaluated and visualized.
 
-Inspired by the `counterfactuals` package [@Dandl2023Counterfactuals], `irdpackage` is built based on an R6 arquitecture @Chang2021R6, in which all IRD methods inherit from a common abstract base class called `RegDescMethod`. This class does input validation, detects the task (regression versus classification settings), manages the user's constraints such as the fixed features and wraps the final result in a standarized output object. Each concrete method only implements its own search procedure in `private$run()`.
+Inspired by the `counterfactuals` package [@Dandl2023Counterfactuals], `irdpackage` is built based on an R6 architecture @Chang2021R6, in which all IRD methods inherit from a common abstract base class called `RegDescMethod`. This class does input validation, detects the task (regression versus classification settings), manages the user's constraints such as the fixed features and wraps the final result in a standardized output object. Each concrete method only implements its own search procedure in `private$run()`.
+
+This workflow can be seen in Figure \@ref(fig:call-graph), inspired by Figure 2 of the `counterfactuals` vignette [@Dandl2023Counterfactuals].
+
+```{r call-graph, fig.cap="Call graph of the irdpackage", echo=FALSE, out.width="0.8\\textwidth", fig.align="center"}
+knitr::include_graphics("Call_graph_final.pdf")
+```
 
 Internally, regional descriptors are represented using paradox::ParamSet objects [@Lang2022Paradox]: numeric features are described by intervals and categorical features by subsets of levels. Parameters with integer domain are also supported.
 
-The output of every method is a `RegDesc` object, which is the standarized result container. It stores the final box, the predictor, the observation of interest, the desired prediction range or class, the set of fixed (immutable) features along with the method-specific metadata and optimization history. Users can print the descriptor, evaluate its quality by assessing the metrics using sampling or the training data, and also visualize the IRD projected onto a 2D prediction surface.
+The output of every method is a `RegDesc` object, which is the standardized result container. It stores the final box, the predictor, the observation of interest, the desired prediction range or class, the set of fixed (immutable) features along with the method-specific metadata and optimization history. Users can print the descriptor, evaluate its quality by assessing the metrics using sampling or the training data, and also visualize the IRD projected onto a 2D prediction surface.
 
 Notice that the package is inherently model-agnostic. By relying on iml::Predictor, all methods can interact and probe the model using a unified prediction interface, which is independent of how the model was trained or the prediction task. Furthermore, the package is designed to support actionability constraints via the `fixed_features` argument, which both ensures that certain variables remain unchanged and reduces also the search space (and, consequently, the computational cost).
 
-Given that the package uses a common abstract class that handles the shared logic and the individual algorithms only implement their specific search routine, the `irdpackage` can be easily extended to new methods, as will be explored in section \<TODO\>.
+Given that the package uses a common abstract class that handles the shared logic and the individual algorithms only implement their specific search routine, the `irdpackage` can be easily extended to new methods, as will be explored in section \@ref(extension).
 
-# Use cases {#usecases}
+# Use example: IRD for credit data {#usecases}
+
+To illustrate the workflow of the package, we use the German Credit data and a credit-risk classification task. This follows from the same motivating example discussed in @Dandl2023IRD, where a customer applies for a loan and we would like to understand how much her feature values could vary while the prediction still stays in the same risk region. In particular, we are interested in explaining a moderate-risk credit application for a woman asking for a car loan. In this setup, an Interpretable Regional Descriptor can help us answer how far several features could change simultaneously while the prediction still remains in the chosen risk region.
+
+The example makes use of several R packages. We use `mlr3` to define the classification task, `mlr3learners` to train a `ranger` random forest model and `iml` to wrap the fitted model in a common prediction interface.
+
+```{r setup, warning = FALSE, message=FALSE}
+
+library("mlr3")
+library("mlr3learners")
+library("iml")
+library("mlr3pipelines")
+
+# During package development
+devtools::load_all()
+
+# Or by installing the package
+# remotes::install_github("nathaly-vergel/ird-rpackage", subdir = "irdpackage")
+# library("irdpackage")
+```
+
+During package development, the package can be loaded with `devtools::load_all()`. If the package has been installed (using `remotes::install_github()`, for example), one can load it with `library("irdpackage")`
+
+## Data and prediction task
+
+As training data, we use the German Credit data set, a widely used benchmark in credit risk modeling. The data set contains information on 1000 bank customers, including both financial and personal attributes, and is commonly used to study classification problems in credit scoring.
+
+For this example, we work with a version of the data that includes features such as `duration`, `credit.amount`, `purpose`, `age` and `housing`. The target variable `risk` indicates whether a customer is classified as a good (low-risk) or bad (high-risk) credit.
+
+The dataset comes from the UCI Machine Learning Repository, where it was first included as part of the Statlog (German Credit) data collection [@dua2017uci]. A widely used processed version of this dataset is also available on Kaggle [@ferreira2018german], which offers a cleaned version of the original data.
+
+```{r load-data}
+credit = read.csv(
+  system.file("examples/data/german_credit_data.csv", package = "irdpackage"),
+  row.names = 1,
+  stringsAsFactors = TRUE
+)
+```
+
+Since the raw data contains some incomplete rows, we will remove them for simplicity. Some categorical variables have rare levels. These rare categories can make local explanation methods harder to understand because they might create descriptors with categories that are barely present in the data. To avoid this, we combine the rare levels of `Purpose` and `Saving.accounts`.
+
+Given that the variable `Job` is stored numerically in the original data, but it is conceptually categorical, we convert it into a factor with interpretable labels.
+
+```{r data-cleanup}
+# remove incomplete rows
+credit = na.omit(credit)
+
+# merge rare categories
+levels(credit$Purpose) = c(
+  "others", "car", "others", "others",
+  "furniture", "radio/TV", "others", "others"
+)
+levels(credit$Saving.accounts) = c("little", "moderate", "rich", "rich")
+credit$Job = factor(
+  credit$Job,
+  levels = c(0, 1, 2, 3),
+  labels = c("unskilled", "unskilled", "skilled", "highly skilled")
+)
+
+# standardize names and drop unused levels
+names(credit) = tolower(names(credit))
+credit = droplevels.data.frame(credit)
+
+# ordered factors
+credit$saving.accounts = as.ordered(credit$saving.accounts)
+credit$checking.account = as.ordered(credit$checking.account)
+```
+
+We can now inspect the structure of the cleaned data.
+
+```{r credit-data, echo = FALSE}
+print(str(credit))
+knitr::kable(credit[1:5, ], caption = "The German credit data. First five rows.")
+```
+
+We then define one observation of interest, `x_interest`. This corresponds to a young woman applying for a car loan. In the code, we set the credit amount to `4000`, the purpose to `car`, the housing type to `rent` and the loan `duration` to 30 months.
+
+```{r x_interest}
+x_interest = credit[1,]
+
+# use case: young woman applying for a car loan
+x_interest$credit.amount = 4000L
+x_interest$purpose = factor("car", levels = levels(credit$purpose))
+x_interest$housing = factor("rent", levels = levels(credit$housing))
+x_interest$duration = 30L
+```
+
+Notice that `x_interest` is represented as a single row from the original data, in the format of a `data.table(1)`.
+
+```{r, echo = FALSE}
+knitr::kable(x_interest)
+```
+
+## Training a prediction model
+
+We train a random forest classifier using `mlr3` [@Lang2019mlr3].
+
+```{r train-rf}
+task = TaskClassif$new(
+  id = "credit",
+  backend = credit,
+  target = "risk"
+)
+
+mod = lrn("classif.ranger", predict_type = "prob")
+
+set.seed(12005L)
+mod$train(task)
+```
+
+We then wrap the model with `iml::Predictor`, which provides a standard prediction interface to `irdpackage`. The prediction is a probability for the class `"good"`.
+
+```{r wrap-pred}
+pred = Predictor$new(
+  model = mod,
+  data = credit,
+  y = "risk",
+  type = "classification",
+  class = "good"
+)
+```
+
+Observe that the model's prediction for our particular customer is:
+
+```{r fhat_interest}
+pred$predict(x_interest)
+```
+
+Based on this, we would like to find a regional descriptor in which the predicted probability of good remains between 0.3 and 0.6. That is, our `desired_range = c(0.3, 0.6)`. It is crucial that the desired range contains the model prediction for `x_interest`.
+
+```{r desired_range}
+desired_range = c(0.3, 0.6)
+```
+
+## Computing an IRD with PRIM
+
+The simplest way to compute an IRD is to use `find_ird()`. Here, we make use of it to find a hyperbox using the PRIM method.
+
+Internally, `find_ird()` creates the corresponding method object, runs the search procedure and returns a `RegDesc` object. As arguments, we have the `predictor`, which provides access to the trained model and the data, the observation we want to explain, the method and finally the `desired_range`.
+
+```{r run-prim}
+set.seed(12005L)
+
+prim_res = find_ird(
+  predictor = pred,
+  x_interest = x_interest,
+  method = "prim",
+  desired_range = c(0.3, 0.6)
+)
+
+class(prim_res)
+```
+
+When printed, the resulting object displays a table where each column explains how that feature is constrained in the hyperbox for the specific point of interest. As columns, we have:
+
+-   *feature:* the name of the variable.
+
+-   *x_interest:* the value of the feature for the observation we are explaining.
+
+-   *regional descriptor:* the range of values for the feature in the IRD. This is the main local explanation: all values in this range can change together with other features and the prediction will stay in the desired range.
+
+-   *1-dim descriptor:* the range in which a single feature could be changed without changing the prediction, keeping all other features fixed to `x_interest`.
+
+-   *range:* the full observed range of that feature in the observed data.
+
+```{r}
+prim_res
+```
+
+### Interpreting the descriptor
+
+Let us interpret the results of the IRD. Remember that such hyperbox can be understood as a set of simultaneous constraints.
+
+For example, the regional descriptor states that the range for `credit.amount` is 2203 to 5129. This means that, together with the other constraints in the box, the credit amount can vary between 2203 and 5129 and the predicted probability of a `"good"` risk would still be between 0.3 and 0.6. So even if this person increases the credit amount to 5129 (or decrease it to 2203), her prediction would still remain in the same risk range.
+
+Also interesting from a fairness perspective, we observe that the IRD result for `sex` is restricted to only `{female}`. This implies that even if all other features remain within the descriptor, changing the sex from female to male would move the prediction outside the desired range. This suggests that the model's prediction is locally sensitive to sex, a protected attribute.
+
+### Local relevance using the range reduction
+
+It is possible to interpret IRDs by comparing the regional descriptor with the full range of each feature. According to Theorems 1 and 2 from @Dandl2023IRD, a feature that is not relevant for the learned model, will have no reduction of its range in the IRD. On the other hand, a feature that is locally relevant will experience a reduction in its range.
+
+For the obtained IRD, we observe that features such as `credit.amount`, `duration` and `checking.account` had a strong reduction. Particularly for duration, the original range was constrained from `[6,72]` to only `[9,44]` (the features range shrank, in a geometric sense, by about 47%). This might indicate that this feature is locally relevant for the prediction.
+
+The feature `age`, on the other hand, did not experience any reduction, meaning it can vary across its full observed range without affecting the prediction locally. This indicates that age might not be influential in this neighborhood.
+
+```{r local-importance, echo = FALSE}
+local_range_reduction = function(box, data) {
+  data = as.data.frame(data)
+
+  res = lapply(box$ids(), function(j) {
+    x = data[[j]]
+    cls = box$class[[j]]
+
+    if (cls %in% c("ParamDbl", "ParamInt")) {
+      full_rng = range(x, na.rm = TRUE)
+      box_rng  = c(box$lower[[j]], box$upper[[j]])
+
+      full = diff(full_rng)
+      kept = diff(box_rng)
+      red = if (full == 0) 0 else 1 - kept / full
+
+      box_str  = sprintf("[%s, %s]", box_rng[1], box_rng[2])
+      full_str = sprintf("[%s, %s]", full_rng[1], full_rng[2])
+
+    } else {
+      full_lvls = if (!is.null(levels(x))) levels(x) else sort(unique(as.character(x)))
+      box_lvls  = box$levels[[j]]
+
+      full = length(full_lvls)
+      kept = length(box_lvls)
+      red = if (full == 0) 0 else 1 - kept / full
+
+      box_str  = paste0("{", paste(box_lvls, collapse = ", "), "}")
+      full_str = paste0("{", paste(full_lvls, collapse = ", "), "}")
+    }
+
+    data.frame(
+      feature = j,
+      reduction = paste0(round(100 * red, 1), "%"),
+      box_range = box_str,
+      full_range = full_str
+    )
+  })
+
+  res = do.call(rbind, res)
+  res$reduction_num = as.numeric(sub("%", "", res$reduction))
+  res = res[order(-res$reduction_num), ]
+  res$ranking = seq_len(nrow(res))
+
+  res[, c("ranking", "feature", "reduction", "box_range", "full_range")]
+}
+
+knitr::kable(local_range_reduction(prim_res$box, pred$data$X),
+      caption = "Local feature relevance based on geometric range reduction.") 
+```
+
+Table \@ref(tab:local-importance) formalizes this idea by providing a simple local relevance indicator derived from the IRD. For each feature, we compare the size of its admissible region in the descriptor with its full observed range. For numerical features, this corresponds to interval width, and for categorical features we compare the number of retained categories relative to the total number of categories. Features with a significantly reduced range in the descriptor are more constrained by the model around the observation of interest. This suggests that these features are locally important for the prediction. On the other hand, features that retain their full range in the descriptor appear to have less local influence.
+
+Notice, however, that this approach is purely geometrical and does not account for the data distribution (or feature interactions). And while it should not be interpreted causally, it can work as a heuristic to understand which features are more relevant locally.
+
+### Visualize the descriptor
+
+A useful way to inspect an IRD is to project it onto two features. Plot \@ref(fig:2d-plot-prim) shows the descriptor on the `duration` and `credit.amount` dimensions.
+
+```{r 2d-plot-prim, fig.cap="Projection of the IRD over duration and credit amount"}
+prim_res$plot_surface(
+  feature_names = c("duration", "credit.amount"),
+  surface = "range"
+)
+```
+
+This plot should be read as a two-dimensional projection of the full box. It is important to mention that the actual IRD may also restrict other features. Still, this view is useful because it shows how much the loan duration and credit amount can vary locally while the prediction remains inside the selected range.
+
+### Evaluate the descriptor
+
+We can evaluate the learned hyperbox using its `evaluate()` method.
+
+By default, 100 points are sampled uniformly from the descriptor. The impurity metric is related to precision, and indicates the proportion of sampled points whose predictions fall *outside* the desired range (lower is better). `dist` is the average absolute difference between sampled predictions and the prediction at `x_interest` (lower means more stable and local predictions).
+
+```{r prim-evaluate}
+prim_res$evaluate()
+```
+
+About 24% of the sampled points violate the desired range and predictions inside the box deviate (from that of `x_interest`) on average by 0.13. This indicates that the box is not fully homogeneous and can likely be improved via post-processing.
+
+### Inspect the search history
+
+For PRIM, it is useful to inspect the search history. This tells us how the box changed during the optimization.
+
+```{r prim-history}
+prim_res$history
+```
+
+The history can be read as a record of the peeling and pasting steps. This is mainly useful for debugging, method comparison and understanding how the final box was constructed.
+
+The object also stores the number of calls to the prediction function.
+
+```{r prim-calls}
+prim_res$calls_fhat 
+```
+
+This quantity is useful because IRD methods are model-agnostic and therefore interact with the model mainly through prediction calls. A lower number of calls usually means a cheaper explanation procedure.
+
+The method parameters are stored as well. This is intended to make result reproducible and easier to compare with other descriptors.
+
+```{r prim-methods}
+prim_res$method_parameters 
+```
+
+### Advanced settings
+
+The default call above uses the default PRIM settings, but method-specific arguments can be passed through `method_args`. For example, `subbox_relsize` controls the relative size of the candidate subboxes considered during peeling and pasting.
+
+```{r prim-fit-with-args, eval=FALSE}
+prim_res = find_ird(
+  predictor = pred,
+  x_interest = x_interest,
+  method = "prim",
+  desired_range = desired_range,
+  method_args = list(
+    subbox_relsize = 0.05,
+    strategy = "traindata",
+    quiet = TRUE
+  )
+)
+```
+
+## Post-processing the PRIM regional descriptor
+
+The descriptor found by PRIM is based on a finite set of candidate boundaries. Post-processing refines this box by sampling additional points, checking whether the box is homogeneous and then peeling or pasting boundaries when possible.
+
+To run the post-processing procedure, we can use the `postprocess_box()` function.
+
+```{r prim-post-processing}
+set.seed(12005L)
+
+prim_post = postprocess_box(
+  object = prim_res,
+  desired_range = desired_range
+)
+```
+
+The resulting box is presented below:
+
+```{r post-prim-res}
+prim_post
+```
+
+We can see that the post-processed box is generally tighter than the original PRIM box. In particular, for numeric features such as `credit.amount` and `duration`, the intervals are substantially reduced (from [2203, 5129] to [4000, 4226] and from [9, 44] to [27, 33], respectively).
+
+We evaluate the post-processed descriptor.
+
+```{r post-prim-eval}
+prim_post$evaluate()
+```
+
+Compared to the initial box (`prim_res`), the impurity of the box has been notably reduced, meaning that the learned box is more homogeneous. Predictions are also, on average, closer to that of `x_interest`.
+
+We can inspect the post-processed box visually, using the same projection as before.
+
+```{r plot-post}
+prim_post$plot_surface(
+  feature_names = c("duration", "credit.amount"),
+  surface = "range"
+)
+```
+
+We see that the box became smaller, which means the post-processing removed regions that did not reliably satisfy the desired range, at least in these two dimensions.
+
+## Computing an IRD with MaxBox
+
+While the sugar function `find_ird()` is convenient, it is also possible to work directly with the R6 method classes. Here we construct a `MaxBox` object directly and then call `$find_box()`.
+
+```{r maxbox-r6}
+
+set.seed(12005L)
+
+maxbox = MaxBox$new(
+  predictor = pred,
+  quiet = FALSE,
+  strategy = "traindata"
+)
+
+maxbox_res = maxbox$find_box(
+  x_interest = x_interest,
+  desired_range = desired_range
+)
+```
+
+This gives the same type of result object as `find_ird()`.
+
+```{r maxbox-result}
+maxbox_res
+```
+
+And it can be evaluated in the same way.
+
+```{r maxbox-eval}
+maxbox_res$evaluate()
+```
+
+The method `get_parameters` displays a named list of the hyperparameters used when executing this search routine.
+
+```{r}
+maxbox$get_parameters()
+```
+
+### Prediction surface for the MaxBox predictor
+
+For the learned MaxBox descriptor, we now use `surface = "prediction"`. This shows the model prediction surface together with the descriptor projection.
+
+```{r maxbox-plot}
+maxbox_res$plot_surface(
+  feature_names = c("duration", "credit.amount"),
+  surface = "prediction"
+)
+```
+
+The plotting method can also be used with categorical features. First, we combine one numeric and one categorical feature: loan duration and housing.
+
+```{r pred-mixed, warning = FALSE}
+maxbox_res$plot_surface(
+  feature_names = c("duration", "housing"),
+  surface = "prediction"
+)
+```
+
+We can also plot two categorical features, which can help us check which combinations of the two categorical values are compatible with the descriptor.
+
+```{r pred-cat, warning = FALSE}
+maxbox_res$plot_surface(
+  feature_names = c("housing", "purpose"),
+  surface = "prediction"
+)
+```
 
 # How to extend the package {#extension}
 
 The `irdpackage` has been designed to be easily extensible by new IRD methods, since it uses a modular design, where all methods share a common structure but each algorithm can have its own logic in an individual method class. In this sense, new methods can be added by implementing a few required class methods and making use of shared helper functions.
 
+## Class structure
+
 All IRD methods are created as R6 classes that inherit from the base class RegDescMethod. At minimum, a new method must define two components: an `initialize()` method and a `run()` method. The initialize method stores the method-specific hyperparameters and calls the superclass constructor. The `run()` method, on the other hand, implements the actual search procedure for the IRD and returns a hyperbox in the form of a `paradox::ParamSet`. The structure of the search routine is intentionally left unrestricted, so many types of algorithms can be added.
 
-``` R
+``` r
 NewIRDMethod = R6::R6Class("NewIRDMethod", inherit = RegDescMethod,
   public = list(
-    initialize = function(predictor, my_param = 1, quiet = FALSE) {
+    initialize = function(predictor, some_param = 1, quiet = FALSE) {
       super$initialize(predictor, quiet)
-      private$my_param = my_param
+      private$some_param = some_param
     }
   ),
   private = list(
     my_param = NULL,
     run = function() {
       # use private$x_interest, private$predictor, private$desired_range, ...
+      
+      
+      
       # build and iteratively update a box
-      box = make_param_set(private$x_interest)
       # ...
-      private$.history = data.table::data.table()
-      private$.calls_fhat = 0
-      box
+      
+      # update private$.calls_fhat as predictions are made
+      # optionally store iteration details in private$.history
+      
+      return(box)
     },
     .get_parameters = function() {
-      list(my_param = private$my_param)
-    },
-    print_parameters = function() {
-      cat(" - my_param: ", private$my_param, "\n")
+      list(some_param = private$some_param)
     }
   )
 )
+```
+
+The \$.get_parameter() method is not mandatory but still recommended, as it returns a list of all relevant hyperparameters of the method.
+
+### Implementation of the \$initialize method
+
+The `$initialize()` method defines how a new regional descriptor method is created. It must always include a `predictor` argument (which expects an `iml::Predictor`) and it should call `super$initialize(predictor, quiet)` so that all shared fields from `RegDescMethod` are initialized. If the method being implemented has any additional arguments, such as search settings or stopping criteria, they should be checked and stored in private fields so that they can be later used by the method and returned by `.get_parameters()`, when manually added.
+
+### Implementation of the search routine
+
+The core of a new IRD method lies in the implementation of the `run()` method, which is intended to perform the optimization of the box boundaries/values and returns a `paradox::ParamSet` representing the final regional descriptor.
+
+When a user calls `find_ird()` (or `find_box()` internally), the base class prepares all the necessary inputs and stores them in private fields. So the `run()` can directly use the observation of interest, the desired prediction range, the data used for evaluation, the initial box (for PostProcessing) and the maximal admissible box.
+
+The only strict requirement is that `run()` returns a valid box representation. All subsequent steps, such as wrapping the result into a `RegDesc` object or standarizing the output, are handled automatically by the base class.
+
+## Reusing shared components
+
+New methods can benefit from reusing existing functions rather than reimplementing them. The package provides a shared `helpers.R` file with useful functions to create boxes, update the boundaries, sample new candidate points or evaluating whether the predictions fall within the desired range.
+
+The use of these helpers has the purpose of allowing developers to fully focus on implementing the optimization step of their method, as well as reducing repeated code and ensuring consistency among the implemented methods.
+
+## Suggestions for integration
+
+For a seamless integration with the package, it is recommended that newly adapted methods follow the conventions of existing implementations. We advise to record diagnostic information such as the history of the optimization process and the number of model evaluations. This information is useful for analyzing, debugging and comparing IRD methods.
+
+Although this is not required, new methods can be added to the package's high-level interface (i.e. syntactic sugar functions) by extending the `find_ird()` function. This allows users to call the method using a simple parameter indicating the method's name instead of manually instantiating the object and calling `find_box()`. Such integration can be done as follows:
+
+``` r
+find_ird = function(
+    predictor,
+    x_interest,
+    
+    # Add the method's name here
+    method = c("prim", "maxbox", "maire", "newirdmethod"),
+    
+    desired_range = NULL,
+    desired_class = NULL,
+    fixed_features = NULL,
+    obsdata = NULL,
+    box_largest = NULL,
+    method_args = list()) {
+
+  method = match.arg(method)
+
+  checkmate::assert_class(predictor, "Predictor")
+  checkmate::assert_list(method_args, names = "named")
+
+  ctor_args = c(list(predictor = predictor), method_args)
+
+  method_object = switch(
+    method,
+    # Existing methods
+    "prim" = do.call(Prim$new, ctor_args),
+    "maxbox" = do.call(MaxBox$new, ctor_args),
+    "maire" = do.call(Maire$new, ctor_args),
+    
+    # Add a new case here with the R6 class that implemented the new method
+    "newirdmethod" = do.call(NewIRDMethod$new, ctor_args)
+  )
+
+  method_object$find_box(
+    x_interest = x_interest,
+    desired_range = desired_range,
+    desired_class = desired_class,
+    fixed_features = fixed_features,
+    obsdata = obsdata,
+    box_largest = box_largest
+  )
+}
+```
+
+That way, the users can call the new method through the high-level interface:
+
+``` r
+find_ird(
+  predictor = predictor,
+  x_interest = x_interest,
+  method = "newirdmethod",
+  desired_range = c(0.7, 1),
+  method_args = list(
+    some_param = 0.1,
+    quiet = TRUE
+  )
+)
+```
+
+## Example: Integrating Anchors
+
+To illustrate how a new method can be integrated, we showcase how to include the Anchor's method [@Ribeiro2018Anchors]. Anchors is a rule-based explanation method that returns logical conditions under which the prediction remains stable.
+
+In the original IRD paper [@Dandl2023IRD], Anchors are mentioned as a related hyperbox-based method, which works as a limited baseline for IRDs given that their search space is restricted because features can only be fixed to the value of the observation, left free or constrained by some pre-defined bins for numerical features. This can result in boxes that are too specific and cover too few observations, and the bins can not be adjusted during optimization. Because of these limitations, the package does not treat Anchors as a fully adapted IRD method like PRIM, MaxBox or MAIRE. But it can be adapted to showcase how an external method can be integrated into the `irdpackage` framework.
+
+Just as described before, Anchors can be incorporated by implemented a small number of required method classes and relying on the shared infrastructure. The Anchor class would then inherit from `RegDescMethod`, call `super$initialize()` in its constructor, store the method-specific parameters (such as the desired anchor precision `tau`) and include a private `run()` method that returns a `paradox::ParamSet` box.
+
+``` r
+Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
+  public = list(
+    initialize = function(predictor,
+                          tau = 1,
+                          initialize_bins = TRUE,
+                          bins = NULL,
+                          quiet = FALSE,
+                          ...) {
+
+      if (!requireNamespace("anchors", quietly = TRUE)) {
+        stop("Package 'anchors' is required to use the Anchor method.",
+          call. = FALSE)
+      }
+
+      super$initialize(predictor, quiet)
+
+      if (is.null(bins) && initialize_bins) {
+        bins = private$initialize_bins()
+      }
+
+      private$bins = bins
+      private$tau = tau
+      private$argsanchors = list(...)
+    }
+  ),
+  private = list(
+    run = function() {
+      # Prepare data and fixed features
+      # Call anchors::anchors() and anchors::explain()
+      # Convert the anchor conditions into a ParamSet box
+      # Return the box
+    },
+    .get_parameters = function() {
+      list(
+        tau = private$tau,
+        bins = private$bins
+        )
+    }
+  )
+)
+```
+
+The `run()` method must then prepare the data for the external anchors package [@anchorsOnR] and set `fixed_features` to the values of `x_interest`. Also, since IRDs are defined by a desired prediction range, the prediction interface is adjusted so the external method receives a binary target indicating whether a prediction is within the desired range. Finally, the anchor conditions returned by `anchors::explain()` are converted into a hyperbox: interval conditions become numerical bounds and set conditions become allowed categories. The full implementation is omitted from the main text for readability but is given in the Appendix \@ref(appendixA).
+
+Once the search routine is implemented, the user can run `find_ird(..., method = "anchors")` and will obtain as a result a `RegDesc` object which could be visualized and evaluated just as shown in section \@ref(usecases).
+
+# Small comparison of IRD methods {#benchmarking}
+
+## Setup and metrics
+
+In this section, we briefly compare the three main methods implemented in the package: PRIM, MaxBox and MAIRE. For this, we use the same set up as before: the same dataset, same trained model, the same observation of interest and the same desired prediction range. All methods are run with the default parameters.
+
+For each method, we will compute the initial IRD, then apply post-processing and compare the results using a few practical metrics.
+
+We focus on the following quantities:
+
+-   impurity: fraction of sampled points inside the box whose predictions fall outside the desired range. Lower is better, as we want homogeneous boxes.
+
+-   train_coverage: fraction of training data covered by the box. Higher means a larger box.
+
+-   sampled_coverage: coverage measured using newly sampled points from the largest local box.
+
+-   runtime (`stage_time_sec`, `total_time_sec`): how long the method takes in a stage or total (initial method + post-processing). All experiments were run on a laptop with an AMD Ryzen 5 CPU (16 GB RAM), using R version 4.5.2.
+
+-   model calls (`calls_fhat`): how many times the model was evaluated.
+
+An ideal method will have a low impurity (high precision), high coverage and a reasonable run time.
+
+## Results
+
+```{r helpers, echo = FALSE}
+
+desired_range = c(0.3, 0.6)
+fit_seed = 12005L
+evaluation_seed = 12005L
+evaluation_n = 1000L
+coverage_seed = 12005L
+coverage_n = 5000L
+
+method_specs = list(
+  PRIM = list(
+    method = "prim",
+    method_args = list(quiet = TRUE)
+  ),
+  Maire = list(
+    method = "maire",
+    method_args = list(
+      num_of_iterations = 100L,
+      convergence = TRUE,
+      quiet = TRUE,
+      strategy = "traindata"
+    )
+  ),
+  MaxBox = list(
+    method = "maxbox",
+    method_args = list(
+      quiet = TRUE,
+      strategy = "traindata"
+    )
+  )
+)
+
+postprocess_args = list(
+  quiet = TRUE
+)
+
+sampled_coverage = function(result, n_samples, seed) {
+  set.seed(seed)
+
+  reference_box = get_max_box(
+    x_interest = result$x_interest,
+    fixed_features = result$fixed_features,
+    predictor = result$predictor,
+    desired_range = result$desired_range,
+    param_set = make_param_set(result$predictor$data$X),
+    resolution = 500L
+  )
+
+  sampled = SamplerUnif$new(reference_box)$sample(n = n_samples)$data
+  sampled = reference_box$extra_trafo(x = sampled, predictor = result$predictor)
+
+  mean(identify_in_box(result$box, sampled))
+}
+
+summarise_descriptor = function(method,
+                                stage,
+                                result,
+                                runtime,
+                                eval_n,
+                                seed,
+                                coverage_n,
+                                coverage_seed,
+                                total_runtime = NULL,
+                                total_calls_fhat = NULL) {
+  set.seed(seed)
+  sampled_eval = result$evaluate(n_samples = eval_n)
+  train_eval = result$evaluate_train()
+  sampled_cov = sampled_coverage(
+    result = result,
+    n_samples = coverage_n,
+    seed = coverage_seed
+  )
+
+  if (is.null(total_runtime)) {
+    total_runtime = unname(runtime[["elapsed"]])
+  }
+  if (is.null(total_calls_fhat)) {
+    total_calls_fhat = result$calls_fhat
+  }
+
+  data.frame(
+    method = method,
+    stage = stage,
+    stage_time_sec = unname(runtime[["elapsed"]]),
+    total_time_sec = total_runtime,
+    impurity = unname(sampled_eval[["impurity"]]),
+    dist = unname(sampled_eval[["dist"]]),
+    train_coverage = unname(train_eval[["coverage"]]),
+    sampled_coverage = sampled_cov,
+    stage_calls_fhat = result$calls_fhat,
+    total_calls_fhat = total_calls_fhat,
+    stringsAsFactors = FALSE
+  )
+}
+
+fit_method = function(label, spec) {
+  set.seed(fit_seed)
+  runtime = system.time({
+    result = find_ird(
+      predictor = pred,
+      x_interest = x_interest,
+      method = spec$method,
+      desired_range = desired_range,
+      method_args = spec$method_args
+    )
+  })
+
+  list(
+    result = result,
+    runtime = runtime,
+    summary = summarise_descriptor(
+      method = label,
+      stage = "initial",
+      result = result,
+      runtime = runtime,
+      eval_n = evaluation_n,
+      seed = evaluation_seed,
+      coverage_n = coverage_n,
+      coverage_seed = coverage_seed
+    )
+  )
+}
+
+postprocess_method = function(label, initial) {
+  set.seed(fit_seed)
+  runtime = system.time({
+    post = postprocess_box(
+      object = initial$result,
+      desired_range = desired_range,
+      method_args = postprocess_args
+    )
+  })
+
+  list(
+    result = post,
+    summary = summarise_descriptor(
+      method = label,
+      stage = "postprocessed",
+      result = post,
+      runtime = runtime,
+      eval_n = evaluation_n,
+      seed = evaluation_seed,
+      coverage_n = coverage_n,
+      coverage_seed = coverage_seed,
+      total_runtime = unname(initial$runtime[["elapsed"]]) +
+        unname(runtime[["elapsed"]]),
+      total_calls_fhat = initial$result$calls_fhat + post$calls_fhat
+    )
+  )
+}
+```
+
+### Initial descriptors
+
+```{r bm-initial, out.width="0.92\\textwidth", echo = FALSE, warning=FALSE, message = FALSE}
+
+initial_results = Map(fit_method, names(method_specs), method_specs)
+
+initial_comparison = do.call(
+  rbind,
+  lapply(initial_results, function(x) x$summary)
+)
+rownames(initial_comparison) = NULL
+cols_to_round = c(
+  "stage_time_sec",
+  "total_time_sec",
+  "impurity",
+  "dist",
+  "train_coverage",
+  "sampled_coverage"
+)
+initial_comparison[cols_to_round] = lapply(
+  initial_comparison[cols_to_round],
+  round,
+  digits = 4L
+)
+
+knitr::kable(initial_comparison, caption = "Comparison of IRD methods for German credit dataset, using one explicand.")
+```
+
+We observe that PRIM produces the largest box (highest coverage), but with relatively high impurity (25.9%), which means the region is less homogeneous. MaxBox is similar to PRIM in this sense. It has slightly higher coverage but the highest impurity at 0.320, indicating that its descriptor is less stable. MAIRE, on the other hand, achieves much lower impurity at 0.071 and has smaller prediction deviation. This means it finds both a more precise and stable region. However, it covers very few data points. In terms of speed, MAIRE is much slower, taking about 54 seconds compared to 8-11 seconds for the other methods. All methods use a similar number of model calls.
+
+Let us also explore the resulting hyperboxes, by placing the descriptors side by side. The table below shows one row per feature. Each method column shows the range selected by that method for the same feature.
+
+```{r helpers-side, echo = FALSE}
+descriptor_ranges = function(results, suffix = "") {
+  boxes = lapply(results, function(x) describe_box(x$result$box))
+
+  tables = Map(
+    function(box, method) {
+      out = data.frame(
+        feature = box$id,
+        range = box$range,
+        stringsAsFactors = FALSE
+      )
+      names(out) = c("feature", paste0(method, suffix))
+      out
+    },
+    boxes,
+    names(results)
+  )
+
+  ranges = Reduce(
+    function(left, right) merge(left, right, by = "feature", all = TRUE),
+    tables
+  )
+
+  ranges[order(ranges$feature), ]
+}
+```
+
+```{r side-comparison, echo = FALSE}
+initial_descriptor_ranges = descriptor_ranges(
+  results = initial_results
+)
+rownames(initial_descriptor_ranges) = NULL
+
+knitr::kable(initial_descriptor_ranges, caption = "Comparison of the regional descriptors obtained by the different methods.")
+```
+
+Following from the metrics, we observe that PRIM gives broader, more permissive regions (see `age`). MAIRE produces the most restrictive (and, as a consequence, precise) box. And MaxBox lies in between.
+
+### Post-processed descriptors
+
+Let us now explore the result after the hyperboxes have been refined using post-processing.
+
+```{r bm-post, out.width="0.92\\textwidth"}
+post_results = Map(
+  postprocess_method,
+  names(initial_results),
+  initial_results
+)
+
+postprocessed_comparison = do.call(
+  rbind,
+  lapply(post_results, function(x) x$summary)
+)
+rownames(postprocessed_comparison) = NULL
+postprocessed_comparison[cols_to_round] = lapply(
+  postprocessed_comparison[cols_to_round],
+  round,
+  digits = 4L
+)
+
+knitr::kable(
+  postprocessed_comparison,
+  caption = "Comparison of post-processed IRD methods for the German credit dataset."
+)
+```
+
+Compared to the initial boxes, we can see that impurity consistently decreases, so the resulting boxes became more homogeneous. However, this comes at the cost of an increased runtime and number of model evaluations.
+
+Interestingly, the differences between methods largely disappear in terms of quality. However, as pointed, this comes at a high computational cost. MaxBox is slightly more efficient, while MAIRE and PRIM require more time. But overall, all methods converge to similarly high-quality descriptors after the post-processing procedure.
+
+Here, we show the side-by-side comparison of the post-processed hyperboxes.
+
+```{r side-post, echo = FALSE}
+postprocessed_descriptor_ranges = descriptor_ranges(
+  results = post_results,
+  suffix = "_postprocessed"
+)
+rownames(postprocessed_descriptor_ranges) = NULL
+
+knitr::kable(postprocessed_descriptor_ranges, caption = "Comparison of the post-processed regional descriptors.")
+```
+
+We observe that post-processing suggests tighter intervals for most variables, especially for numeric features like `credit.amount` and `duration`.
+
+For some variables, the methods now mostly agree. For example, age is expanded to the full range [19, 75] for both PRIM and MAIRE, which suggests that age is not important locally. MaxBox is a bit more restrictive, with a range of [19, 22].
+
+However, there are still differences for other features. MAIRE still gives the most restrictive boxes. For example, it fixes `housing`, `job`, `purpose` and `saving.accounts` to a single category. It is also worth mentioning that `sex` is fixed to only `{female}` in PRIM, while MAIRE and MaxBox allow both values, so the methods exhibit different views on how important `sex` is locally for the prediction.
+
+# Appendix {#appendix}
+
+## Appendix A. Full run() implementation for Anchor Method {#appendixA}
+
+We provide a full implementation of the run() method for the Anchor class. The method makes use of the external anchors package, adapts the prediction function to the IRD setting and translates the resulting anchor conditions into a proper hyperbox representation such that it is compatible with the `irdpackage` framework.
+
+``` r
+run = function() {
+  # Prepare the data used by the external anchors backend
+  if (is.null(private$obsdata)) {
+    private$obsdata = copy(private$predictor$data$get.xy())
+  } else {
+    private$.calls_fhat = private$.calls_fhat + nrow(private$obsdata)
+    private$obsdata[[private$predictor$data$y.names]] =
+      private$predictor$predict(private$obsdata)[[1]]
+  }
+
+  # Add the observation of interest to the data
+  xinterest = copy(private$x_interest)
+  xinterest[[private$predictor$data$y.names]] = private$f_hat_interest[[1]]
+  private$obsdata = rbind(xinterest, private$obsdata)
+
+  current_box = private$param_set
+
+  # Enforce fixed features by fixing both the data and the current box
+  if (!is.null(private$fixed_features)) {
+    fixed_features = private$fixed_features
+    private$obsdata[, (fixed_features) :=
+      private$x_interest[, fixed_features, with = FALSE]]
+
+    if (!is.null(private$bins[fixed_features])) {
+      for (ff in fixed_features) {
+        private$bins[[ff]] = integer()
+
+        if (private$predictor$data$feature.types[ff] == "numerical") {
+          current_box = update_box(
+            current_box,
+            j = ff,
+            lower = private$x_interest[[ff]],
+            upper = private$x_interest[[ff]],
+            complement = FALSE
+          )
+        } else {
+          current_box = update_box(
+            current_box,
+            j = ff,
+            val = private$x_interest[[ff]],
+            complement = FALSE
+          )
+        }
+      }
+    }
+  }
+
+  # Initialize the external anchors explainer
+  explainer = do.call(
+    anchors::anchors,
+    c(
+      list(
+        x = private$obsdata,
+        model = private$predictor,
+        bins = private$bins,
+        tau = private$tau,
+        target = private$predictor$data$y.names,
+        verbose = !private$quiet
+      ),
+      private$argsanchors
+    )
+  )
+
+  # Adapt the prediction interface expected by anchors
+  # The target is whether predictions fall inside desired_range
+  predict_model.Predictor <<- function(x, newdata, type, ...) {
+    private$.calls_fhat = private$.calls_fhat + nrow(newdata)
+    predict_range(x, newdata = newdata, range = private$desired_range)
+  }
+
+  model_type.Predictor <<- function(x, ...) {
+    "classification"
+  }
+
+  # Run the anchor explanation.
+  if (private$quiet) {
+    explanations = try(
+      suppressMessages(
+        anchors::explain(private$x_interest, explainer, labels = 1)
+      ),
+      silent = TRUE
+    )
+  } else {
+    explanations = try(
+      anchors::explain(private$x_interest, explainer),
+      silent = TRUE
+    )
+  }
+
+  if (inherits(explanations, "try-error")) {
+    closeAllConnections()
+
+    stop(
+      "The Anchor method failed while calling `anchors::explain()`. ",
+      "This can happen because the external anchors backend is stochastic ",
+      "and may fail for some random states. ",
+      "Please try running the method again, or set a different seed before ",
+      "calling `$find_box()`.\n\n",
+      "Original error:\n",
+      conditionMessage(attr(explanations, "condition")),
+      call. = FALSE
+    )
+  }
+
+  private$.history = explanations
+
+  # Translate the returned anchor into the IRD box representation
+  if (is.null(private$bins)) {
+    for (feat in explanations$feature) {
+      if (feat == "base") next
+
+      val = private$x_interest[[feat]]
+
+      if (private$predictor$data$feature.types[[feat]] == "categorical") {
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          val = as.character(val),
+          complement = FALSE
+        )
+      } else {
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          lower = val,
+          upper = val,
+          complement = FALSE
+        )
+      }
+    }
+  } else {
+    for (expr in explanations$feature_desc) {
+      if (is.na(expr)) next
+
+      feat = gsub("(.+?)( [IN|=].*)", "\\1", expr)
+      if (feat %in% private$fixed_features) next
+
+      operator = gsub("(.+?IN )(.)(.*)", "\\2", expr)
+
+      if (operator == "[") {
+        val1 = gsub("(.+?\\[)(.+?)(,.*)", "\\2", expr)
+        val2 = gsub("(.+?\\[.+?,)(.+?)(\\).*)", "\\2", expr)
+        val = as.numeric(c(val1, val2))
+
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          lower = val[1],
+          upper = val[2],
+          complement = FALSE
+        )
+      } else if (operator == ">") {
+        val = gsub("(.+?)(>=)(.+?)", "\\3", expr)
+
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          lower = as.numeric(val),
+          complement = FALSE
+        )
+      } else if (operator == "<") {
+        val = gsub("(.+?)(<=)(.+?)", "\\3", expr)
+
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          upper = as.numeric(val),
+          complement = FALSE
+        )
+      } else if (operator == "{") {
+        val = gsub("(.+?\\{)(.+?)(\\}.*)", "\\2", expr)
+
+        if (grepl(",", val)) {
+          val = eval(parse(text = paste0("c(", val, ")")))
+        }
+
+        if (private$param_set$is_number[[feat]]) {
+          current_box = update_box(
+            current_box = current_box,
+            j = feat,
+            lower = min(val),
+            upper = max(val),
+            complement = FALSE
+          )
+        }
+
+        current_box = update_box(
+          current_box = current_box,
+          j = feat,
+          val = val,
+          complement = FALSE
+        )
+      }
+    }
+  }
+
+  current_box
+}
 ```
 
 # References {#references}
