@@ -222,11 +222,11 @@ library("iml")
 library("mlr3pipelines")
 
 # During package development
-devtools::load_all()
+# devtools::load_all()
 
 # Or by installing the package
 # remotes::install_github("nathaly-vergel/ird-rpackage", subdir = "irdpackage")
-# library("irdpackage")
+library("irdpackage")
 ```
 
 During package development, the package can be loaded with `devtools::load_all()`. If the package has been installed (using `remotes::install_github()`, for example), one can load it with `library("irdpackage")`
@@ -865,19 +865,19 @@ postprocess_args = list(
 sampled_coverage = function(result, n_samples, seed) {
   set.seed(seed)
 
-  reference_box = get_max_box(
+  reference_box = irdpackage:::get_max_box(
     x_interest = result$x_interest,
     fixed_features = result$fixed_features,
     predictor = result$predictor,
     desired_range = result$desired_range,
-    param_set = make_param_set(result$predictor$data$X),
+    param_set = irdpackage:::make_param_set(result$predictor$data$X),
     resolution = 500L
   )
 
   sampled = SamplerUnif$new(reference_box)$sample(n = n_samples)$data
   sampled = reference_box$extra_trafo(x = sampled, predictor = result$predictor)
 
-  mean(identify_in_box(result$box, sampled))
+  mean(irdpackage:::identify_in_box(result$box, sampled))
 }
 
 summarise_descriptor = function(method,
@@ -1012,7 +1012,7 @@ Let us also explore the resulting hyperboxes, by placing the descriptors side by
 
 ```{r helpers-side, echo = FALSE}
 descriptor_ranges = function(results, suffix = "") {
-  boxes = lapply(results, function(x) describe_box(x$result$box))
+  boxes = lapply(results, function(x) irdpackage:::describe_box(x$result$box))
 
   tables = Map(
     function(box, method) {
