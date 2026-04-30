@@ -31,7 +31,6 @@ The resulting hyperboxes allow for multiple types of analysis. For example, we c
 
 The `irdpackage` provides a unified and extensible framework to compute IRDs using different underlying algorithms (for example, PRIM, MaxBox, MAIRE), together with a post-processing procedure that improves the quality of the resulting regions.
 
-
 # Methodological Background {#background}
 
 ## Setup
@@ -109,7 +108,7 @@ These two properties allow for two interesting interpretations:
 
 The general workflow to compute IRDs can be decomposed into four steps, illustrated in Figure \@ref(fig:framework-ird).
 
-```{r framework-ird, fig.cap="Figure 1. IRD framework", echo=FALSE, out.width="100%", out.height="100%", fig.align="center"}
+```{r framework-ird, fig.cap="IRD framework.", echo=FALSE, out.width="0.92\\textwidth", fig.align="center"}
 knitr::include_graphics("IRD_framework.pdf")
 ```
 
@@ -168,19 +167,23 @@ This step improves the box’s boundaries by re-evaluating it with newly sampled
 
 Finding an IRD can be computationally demanding, especially when there are many features, because the search space grows quickly. To handle this, the framework lets users fix certain features to the values they have in $\text{x}'$, which simplifies the search.
 
-Fixing features can also have the purpose of making the resulting explanation more actionable for the person consuming the explanation. For example, some features, such as the age, are considered to be *immutable,* as can not be changed in real life. By keeping them fixed in $\text{x}'$, the IRD focuses only on features that can actually be modified by the user.
+Fixing features can also have the purpose of making the resulting explanation more actionable for the person consuming the explanation. For example, some features, such as the age, are considered to be *immutable,* as they can not be changed in real life. By keeping them fixed in $\text{x}'$, the IRD focuses only on features that can actually be modified by the user.
 
 # The irdpackage in R {#irdpackage}
 
-The `irdpackage` provides a unified and model-agnostic framework for computing IRDs in R.The package implements several IRD algorithms, with a standard way of defining, executing and returning them. Given a trained model and an observation of interest `x_interest`, and a prediction range, the package computes an IRD as a hyperbox that contains `x_interest` and keeps the predictions within the `desired_range`.
+The `irdpackage` provides a unified and model-agnostic framework for computing IRDs in R. The package implements several IRD algorithms, with a standard way of defining, executing and returning them. Given a trained model and an observation of interest `x_interest`, and a prediction range, the package computes an IRD as a hyperbox that contains `x_interest` and keeps the predictions within the `desired_range`.
 
 From a user perspective, the package offers a simple interface based on two primary functions: `find_ird()` computes an IRD by selecting and running a method such as PRIM, MaxBox or MAIRE. The function `postprocess_box()` refines the learned box by applying a post-processing procedure which aims to further improve the coverage and precision.
 
-The general workflow consists on first wrapping a model in a iml::Predictor [@Molnar2018IML] and then executing a particular method through the `find_ird()` function by feeding it the `x_interest`, the desired prediction range, the method's parameters and some optional constraints. Since the Predictor object provides a common prediction interface, the package works with any machine learning model trained with different frameworks (such as `mlr3` \@[@Lang2019mlr3] or even a custom model), as long as they can be wrapped using `iml::Predictor`.
+The general workflow consists on first wrapping a model in a `iml::Predictor` [@Molnar2018IML] and then executing a particular method through the `find_ird()` function by feeding it the `x_interest`, the desired prediction range, the method's parameters and some optional constraints. Since the Predictor object provides a common prediction interface, the package works with any machine learning model trained with different frameworks (such as `mlr3` [@Lang2019mlr3] or even a custom model), as long as they can be wrapped using `iml::Predictor`.
 
 The resulting hyperbox is always returned as a `RegDesc` object, which can be inspected, evaluated and visualized.
 
-Inspired by the `counterfactuals` package [@Dandl2023Counterfactuals], `irdpackage` is built based on an R6 architecture @Chang2021R6, in which all IRD methods inherit from a common abstract base class called `RegDescMethod`. This class does input validation, detects the task (regression versus classification settings), manages the user's constraints such as the fixed features and wraps the final result in a standardized output object. Each concrete method only implements its own search procedure in `private$run()`.
+Inspired by the `counterfactuals` package [@Dandl2023Counterfactuals], `irdpackage` is built based on an R6 architecture @Chang2021R6, in which all IRD methods inherit from a common abstract base class called `RegDescMethod`. This class does input validation, detects the task (regression versus classification settings), manages the user's constraints such as the fixed features and wraps the final result in a standardized output object. Each concrete method only implements its own search procedure in `private$run()`. This workflow can be seen in Figure \@ref(fig:call-graph), inspired by Figure 2 of the `counterfactuals` vignette [@Dandl2023Counterfactuals].
+
+```{r call-graph, fig.cap="Call graph of the `irdpackage`. The `find_ird()` function (1) calls the `$find_box()` method implemented by the selected IRD method (an R6 class inheriting from `RegDescMethod`), which performs the search for a regional descriptor. The method (2) returns the resulting hyperbox, which is then wrapped by `find_ird()` into a `RegDesc` object (3). The `RegDesc` object stores the descriptor together with relevant metadata and provides methods for evaluation and visualization. .", echo=FALSE, out.width="0.8\\textwidth", fig.align="center"}
+knitr::include_graphics("Call_graph.pdf")
+```
 
 Internally, regional descriptors are represented using paradox::ParamSet objects [@Lang2022Paradox]: numeric features are described by intervals and categorical features by subsets of levels. Parameters with integer domain are also supported.
 
@@ -371,7 +374,7 @@ Also interesting from a fairness perspective, we observe that the IRD result for
 
 ### Local relevance using the range reduction
 
-It is possible to interpret IRDs by comparing the regional descriptor with the full range of each feature. According to Theorem's 1 and 2 from @Dandl2023IRD, a feature that is not relevant for the learned model, will have no reduction of its range in the IRD. On the other hand, a feature that is locally relevant will experience a reduction in its range.
+It is possible to interpret IRDs by comparing the regional descriptor with the full range of each feature. According to Theorems 1 and 2 from @Dandl2023IRD, a feature that is not relevant for the learned model, will have no reduction of its range in the IRD. On the other hand, a feature that is locally relevant will experience a reduction in its range.
 
 For the obtained IRD, we observe that features such as `credit.amount`, `duration` and `checking.account` had a strong reduction. Particularly for duration, the original range was constrained from `[6,72]` to only `[9,44]` (the features range shrank, in a geometric sense, by about 47%). This might indicate that this feature is locally relevant for the prediction.
 
@@ -782,7 +785,7 @@ Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
 )
 ```
 
-The `run()` method must then prepare the data for the external anchors package and set `fixed_features` to the values of `x_interest`. Also, since IRDs are defined by a desired prediction range, the prediction interface is adjusted so the external method receives a binary target indicating whether a prediction is within the desired range. Finally, the anchor conditions returned by `anchors::explain()` are converted into a hyperbox: interval conditions become numerical bounds and set conditions become allowed categories. The full implementation is omitted from the main text for readability but is given in the Appendix \@ref(appendixA).
+The `run()` method must then prepare the data for the external anchors package [@anchorsOnR] and set `fixed_features` to the values of `x_interest`. Also, since IRDs are defined by a desired prediction range, the prediction interface is adjusted so the external method receives a binary target indicating whether a prediction is within the desired range. Finally, the anchor conditions returned by `anchors::explain()` are converted into a hyperbox: interval conditions become numerical bounds and set conditions become allowed categories. The full implementation is omitted from the main text for readability but is given in the Appendix \@ref(appendixA).
 
 Once the search routine is implemented, the user can run `find_ird(..., method = "anchors")` and will obtain as a result a `RegDesc` object which could be visualized and evaluated just as shown in section \@ref(usecases).
 
@@ -990,7 +993,7 @@ initial_comparison[cols_to_round] = lapply(
 knitr::kable(initial_comparison, caption = "Comparison of IRD methods for German credit dataset, using one explicand.")
 ```
 
-We observe that PRIM produces the largest box (highest coverage), but with relatively high impurity (25.9%). However, it has a relatively high impurity of 25.9%, which means the region is less homogeneous. MaxBox is similar to PRIM in this sense. It has slightly higher coverage but the highest impurity at 0.320, indicating that its descriptor is less stable. MAIRE, on the other hand, achieves much lower impurity at 0.071 and has smaller prediction deviation. This means it finds both a more precise and stable region. However, it covers very few data points. In terms of speed, MAIRE is much slower, taking about 54 seconds compared to 8-11 seconds for the other methods. All methods use a similar number of model calls.
+We observe that PRIM produces the largest box (highest coverage), but with relatively high impurity (25.9%), which means the region is less homogeneous. MaxBox is similar to PRIM in this sense. It has slightly higher coverage but the highest impurity at 0.320, indicating that its descriptor is less stable. MAIRE, on the other hand, achieves much lower impurity at 0.071 and has smaller prediction deviation. This means it finds both a more precise and stable region. However, it covers very few data points. In terms of speed, MAIRE is much slower, taking about 54 seconds compared to 8-11 seconds for the other methods. All methods use a similar number of model calls.
 
 Let us also explore the resulting hyperboxes, by placing the descriptors side by side. The table below shows one row per feature. Each method column shows the range selected by that method for the same feature.
 
@@ -1054,7 +1057,10 @@ postprocessed_comparison[cols_to_round] = lapply(
   digits = 4L
 )
 
-postprocessed_comparison
+knitr::kable(
+  postprocessed_comparison,
+  caption = "Comparison of post-processed IRD methods for the German credit dataset."
+)
 ```
 
 Compared to the initial boxes, we can see that impurity consistently decreases, so the resulting boxes became more homogeneous. However, this comes at the cost of an increased runtime and number of model evaluations.
