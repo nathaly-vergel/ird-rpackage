@@ -213,10 +213,12 @@ RegDescMethod = R6::R6Class("RegDescMethod",
             stop("For classification models `desired_class` must be specified when calling $find_box().")
           } else {
             desired_class = private$predictor$class
-            message(sprintf(
-              "The `desired_class` was set to `predictor$class` which is %s.",
-              desired_class
-            ))
+            if (!private$quiet) {
+              message(sprintf(
+                "The `desired_class` was set to `predictor$class` which is %s.",
+                desired_class
+              ))
+            }
           }
         }
 
