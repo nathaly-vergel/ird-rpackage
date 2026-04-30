@@ -219,7 +219,6 @@ The example makes use of several R packages. We use `mlr3` to define the classif
 library("mlr3")
 library("mlr3learners")
 library("iml")
-library("mlr3pipelines")
 
 # During package development
 # devtools::load_all()
@@ -874,7 +873,7 @@ sampled_coverage = function(result, n_samples, seed) {
     resolution = 500L
   )
 
-  sampled = SamplerUnif$new(reference_box)$sample(n = n_samples)$data
+  sampled = paradox::SamplerUnif$new(reference_box)$sample(n = n_samples)$data
   sampled = reference_box$extra_trafo(x = sampled, predictor = result$predictor)
 
   mean(irdpackage:::identify_in_box(result$box, sampled))
