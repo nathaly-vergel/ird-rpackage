@@ -218,16 +218,26 @@ During package development, the package can be loaded with `devtools::load_all()
 
 ## Data and prediction task
 
-The data set
+As training data, we use the German Credit data set, a widely used benchmark in credit risk modeling. The data set contains information on 1000 bank customers, including both financial and personal attributes, and is commonly used to study classification problems in credit scoring.
+
+For this example, we work with a version of the data that includes features such as `duration`, `credit.amount`, `purpose`, `age` and `housing`. The target variable `risk` indicates whether a customer is classified as a good (low-risk) or bad (high-risk) credit.
+
+The dataset comes from the UCI Machine Learning Repository, where it was first included as part of the Statlog (German Credit) data collection [@dua2017uci]. A widely used processed version of this dataset is also available on Kaggle [@ferreira2018german], which offers a cleaned version of the original data.
 
 ```{r load-data}
 
 credit = read.csv(
-  "inst/examples/data/german_credit_data.csv",
+  "../inst/examples/data/german_credit_data.csv",
   row.names = 1,
   stringsAsFactors = TRUE
 )
+```
 
+Since the raw data contains some incomplete rows, we will remove them for simplicity. Some categorical variables have rare levels. These rare categories can make local explanation methods harder to understand because they might create descriptors with categories that are barely present in the data. To avoid this, we combine the rare levels of `Purpose` and `Saving.accounts`.
+
+Given that the variable `Job` is stored numerically in the original data, but it is conceptually categorical, we convert it into a factor with interpretable labels.
+
+```{r data-cleanup}
 # remove incomplete rows
 credit = na.omit(credit)
 
@@ -250,7 +260,355 @@ credit = droplevels.data.frame(credit)
 # ordered factors
 credit$saving.accounts = as.ordered(credit$saving.accounts)
 credit$checking.account = as.ordered(credit$checking.account)
+```
 
+We can now inspect the structure of the cleaned data.
+
+```{r credit-data}
+knitr::kable(credit[1:5, ], caption = "The German credit data.")
+str(credit)
+
+```
+
+We then define one observation of interest, `x_interest`. This corresponds to a young woman applying for a car loan. In the code, we set the credit amount to `4000`, the purpose to `car`, the housing type to `rent` and the loan `duration` to 30 months.
+
+```{r x_interest}
+x_interest = credit[1,]
+
+# use case: young woman applying for a car loan
+x_interest$credit.amount = 4000L
+x_interest$purpose = factor("car", levels = levels(credit$purpose))
+x_interest$housing = factor("rent", levels = levels(credit$housing))
+x_interest$duration = 30L
+```
+
+Notice that `x_interest` is represented as a single row from the original data, in the format of a `data.table(1)`.
+
+```{r, echo = FALSE}
+knitr::kable(x_interest)
+```
+
+## Training a prediction model
+
+We train a random forest classifier using `mlr3` [@Lang2019mlr3].
+
+```{r train-rf}
+task = TaskClassif$new(
+  id = "credit",
+  backend = credit,
+  target = "risk"
+)
+
+mod = lrn("classif.ranger", predict_type = "prob")
+
+set.seed(12005L)
+mod$train(task)
+```
+
+We then wrap the model with `iml::Predictor`, which provides a standard prediction interface to `irdpackage`. The prediction is a probability for the class `"good"`.
+
+```{r wrap-pred}
+pred = Predictor$new(
+  model = mod,
+  data = credit,
+  y = "risk",
+  type = "classification",
+  class = "good"
+)
+```
+
+Observe that the model's prediction for our particular customer is:
+
+```{r fhat_interest}
+pred$predict(x_interest)
+```
+
+Based on this, we would like to find a regional descriptor in which the predicted probability of good remains between 0.3 and 0.6. That is, our `desired_range = c(0.3, 0.6)`. It is crucial that the desired range contains the model prediction for `x_interest`.
+
+```{r desired_range}
+desired_range = c(0.3, 0.6)
+```
+
+## Computing an IRD with PRIM
+
+The simplest way to compute an IRD is to use `find_ird()`. Here, we make use of it to find a hyperbox using the PRIM method.
+
+Internally, `find_ird()` creates the corresponding method object, runs the search procedure and returns a `RegDesc` object. As arguments, we have the `predictor`, which provides access to the trained model and the data, the observation we want to explain, the method and finally the `desired_range`.
+
+```{r run-prim}
+set.seed(12005L)
+
+prim_res = find_ird(
+  predictor = pred,
+  x_interest = x_interest,
+  method = "prim",
+  desired_range = c(0.3, 0.6)
+)
+
+class(prim_res)
+```
+
+When printed, the resulting object displays a table where each column explains how that feature is constrained in the hyperbox for the specific point of interest. As columns, we have:
+
+-   *feature:* the name of the variable.
+
+-   *x_interest:* the value of the feature for the observation we are explaining.
+
+-   *regional descriptor:* the range of values for the feature in the IRD. This is the main local explanation: all values in this range can change together with other features and the prediction will stay in the desired range.
+
+-   *1-dim descriptor:* the range in which a single feature could be changed without changing the prediction, keeping all other features fixed to `x_interest`.
+
+-   *range:* the full observed range of that feature in the observed data.
+
+```{r}
+prim_res
+```
+
+### Interpreting the descriptor
+
+Let us interpret the results of the IRD. Remember that such hyperbox can be understood as a set of simultaneous constraints.
+
+For example, the regional descriptor states that the range for `credit.amount` is 2203 to 5129. This means that, together with the other constraints in the box, the credit amount can vary between 2203 and 5129 and the predicted probability of a `"good"` risk would still be between 0.3 and 0.6. So even if this person increases the credit amount to 5129 (or decrease it to 2203), her prediction would still remain in the same risk range.
+
+Also interesting from a fairness perspective, we observe that the IRD result for `sex` is restricted to only `{female}`. This implies that even if all other features remain within the descriptor, changing the sex from female to male would move the prediction outside the desired range. This suggests that the model's prediction is locally sensitive to sex, a protected attribute.
+
+### Local relevance using the range reduction
+
+It is possible to interprete IRDs by comparing the regional descriptor with the full range of each feature. According to Theorem's 1 and 2 from @Dandl2023IRD, a feature that is not relevant for the learned model, will have no reduction of its range in the IRD. On the other hand, a feature that is locally relevant will experience a reduction in its range.
+
+For the obtained IRD, we observe that features such as `credit.amount`, `duration` and `checking.account` had a strong reduction. Particularly for duration, the original range was constrained from `[6,72]` to only `[9,44]` (the features range shrank, in a geometric sense, by about 47%). This might indicate that this feature is locally relevant for the prediction.
+
+The feature `age`, on the other hand, did not experience any reduction, meaning it can vary accross its full observed range without affecting the prediction locally. This indicates that age might not be influential in this neighborhood.
+
+```{r local-importance, echo = FALSE}
+local_range_reduction = function(box, data) {
+  data = as.data.frame(data)
+
+  res = lapply(box$ids(), function(j) {
+    x = data[[j]]
+    cls = box$class[[j]]
+
+    if (cls %in% c("ParamDbl", "ParamInt")) {
+      full_rng = range(x, na.rm = TRUE)
+      box_rng  = c(box$lower[[j]], box$upper[[j]])
+
+      full = diff(full_rng)
+      kept = diff(box_rng)
+      red = if (full == 0) 0 else 1 - kept / full
+
+      box_str  = sprintf("[%s, %s]", box_rng[1], box_rng[2])
+      full_str = sprintf("[%s, %s]", full_rng[1], full_rng[2])
+
+    } else {
+      full_lvls = if (!is.null(levels(x))) levels(x) else sort(unique(as.character(x)))
+      box_lvls  = box$levels[[j]]
+
+      full = length(full_lvls)
+      kept = length(box_lvls)
+      red = if (full == 0) 0 else 1 - kept / full
+
+      box_str  = paste0("{", paste(box_lvls, collapse = ", "), "}")
+      full_str = paste0("{", paste(full_lvls, collapse = ", "), "}")
+    }
+
+    data.frame(
+      feature = j,
+      reduction = paste0(round(100 * red, 1), "%"),
+      box_range = box_str,
+      full_range = full_str
+    )
+  })
+
+  res = do.call(rbind, res)
+  res$reduction_num = as.numeric(sub("%", "", res$reduction))
+  res = res[order(-res$reduction_num), ]
+  res$ranking = seq_len(nrow(res))
+
+  res[, c("ranking", "feature", "reduction", "box_range", "full_range")]
+}
+
+knitr::kable(local_range_reduction(prim_res$box, pred$data$X),
+      caption = "Local feature relevance based on geometric range reduction.") 
+```
+
+Table \@ref(tab:local-importance) formalizes this idea by providing a simple local relevance indicator derived from the IRD. For each feature, we compare the size of its admissible region in the descriptor with its full observed range. For numerical features, this corresponds to interval width, and for categorical features we compare the number of retained categories relative to the total number of categories. Features with a significantly reduced range in the descriptor are more constrained by the model around the observation of interest. This suggests that these features are locally important for the prediction. On the other hand, features that retain their full range in the descriptor appear to have less local influence.
+
+Notice, however, that this approach is purely geometrical and does not account for the data distribution (or feature interactions). And while it should not be interpreted causally, it can work as a heuristic to understand which features are more relevant locally.
+
+### Visualize the descriptor
+
+A useful way to inspect an IRD is to project it onto two features. Plot \@ref(fig:2d-plot-prim) shows the descriptor on the `duration` and `credit.amount` dimensions.
+
+```{r 2d-plot-prim, fig.cap="Projection of the IRD over duration and credit amount"}
+prim_res$plot_surface(
+  feature_names = c("duration", "credit.amount"),
+  surface = "range"
+)
+```
+
+This plot should be read as a two-dimensional projection of the full box. It is important to mention that the actual IRD may also restrict other features. Still, this view is useful because it shows how much the loan duration and credit amount can vary locally while the prediction remains inside the selected range.
+
+### Evaluate the descriptor
+
+We can evaluate the learned hyperbox using its `evaluate()` method.
+
+By default, 100 points are sampled uniformly from the descriptor. The impurity metric is related to precision, and indicates the proportion of sampled points whose predictions fall *outside* the desired range (lower is better). `dist` is the average absolute difference between sampled predictions and the prediction at `x_interest` (lower means more stable and local predictions).
+
+```{r prim-evaluate}
+prim_res$evaluate()
+```
+
+About 24% of the sampled points violate the desired range and predictions inside the box deviate (from that of `x_interest`) on average by 0.13. This indicates that the box is not fully homogeneous and can likely be improved via post-processing.
+
+### Inspect the search history
+
+For PRIM, it is useful to inspect the search history. This tells us how the box changed during the optimization.
+
+```{r prim-history}
+prim_res$history
+```
+
+The history can be read as a record of the peeling and pasting steps. This is mainly useful for debugging, method comparison and understanding how the final box was constructed.
+
+The object also stores the number of calls to the prediction function.
+
+```{r prim-calls}
+prim_res$calls_fhat 
+```
+
+This quantity is useful because IRD methods are model-agnostic and therefore interact with the model mainly through prediction calls. A lower number of calls usually means a cheaper explanation procedure.
+
+The method parameters are stored as well. This is intended to make result reproducible and easier to compare with other descriptors.
+
+```{r prim-methods}
+prim_res$method_parameters 
+```
+
+### Advanced settings
+
+The default call above uses the default PRIM settings, but method-specific arguments can be passed through `method_args`. For example, `subbox_relsize` controls the relative size of the candidate subboxes considered during peeling and pasting.
+
+```{r prim-fit-with-args, eval=FALSE}
+prim_res = find_ird(
+  predictor = pred,
+  x_interest = x_interest,
+  method = "prim",
+  desired_range = desired_range,
+  method_args = list(
+    subbox_relsize = 0.05,
+    strategy = "traindata",
+    quiet = TRUE
+  )
+)
+```
+
+## Post-processing the PRIM regional descriptor
+
+The descriptor found by PRIM is based on a finite set of candidate boundaries. Post-processing refines this box by sampling additional points, checking whether the box is homogeneous and then peeling or pasting boundaries when possible.
+
+To run the post-processing procedure, we can use the `postprocess_box()` function.
+
+```{r prim-post-processing}
+set.seed(12005L)
+
+prim_post = postprocess_box(
+  object = prim_res,
+  desired_range = desired_range
+)
+```
+
+The resulting box is presented below:
+
+```{r post-prim-res}
+prim_post
+```
+
+We can see that the post-processed box is generally tighter than the original PRIM box. In particular, for numeric features such as `credit.amount` and `duration`, the intervals are substantially reduced (from [2203, 5129] to [4000, 4226] and from [9, 44] to [27, 33], respectively).
+
+We evaluate the post-processed descriptor.
+
+```{r post-prim-eval}
+prim_post$evaluate()
+```
+
+Compared to the initial box (`prim_res`), the impurity of the box has been notably reduced, meaning that the learned box is more homogeneous. Predictions are also, on average, closer to that of `x_interest`.
+
+We can inspect the post-processed box visually, using the same projection as before.
+
+```{r plot-post}
+prim_post$plot_surface(
+  feature_names = c("duration", "credit.amount"),
+  surface = "range"
+)
+```
+
+We see that the box became smaller, which means the post-processing removed regions that did not reliably satisfy the desired range, at least in these two dimensions.
+
+## Computing an IRD with MaxBox
+
+While the sugar function `find_ird()` is convenient, it is also possible to work directly with the R6 method classes. Here we construct a `MaxBox` object directly and then call `$find_box()`.
+
+```{r maxbox-r6}
+
+set.seed(12005L)
+
+maxbox = MaxBox$new(
+  predictor = pred,
+  quiet = FALSE,
+  strategy = "traindata"
+)
+
+maxbox_res = maxbox$find_box(
+  x_interest = x_interest,
+  desired_range = desired_range
+)
+```
+
+This gives the same type of result object as `find_ird()`.
+
+```{r maxbox-result}
+maxbox_res
+```
+
+And it can be evaluated in the same way.
+
+```{r maxbox-eval}
+maxbox_res$evaluate()
+```
+
+The method `get_parameters` displays a named list of the hyperparameters used when executing this search routine.
+
+```{r}
+maxbox$get_parameters()
+```
+
+### Prediction sufrance for the MaxBox predictor
+
+For the learned MaxBox descriptor, we now use `surface = "prediction"`. This shows the model prediction surface together with the descriptor projection.
+
+```{r maxbox-plot}
+maxbox_res$plot_surface(
+  feature_names = c("duration", "credit.amount"),
+  surface = "prediction"
+)
+```
+
+The plotting method can also be used with categorical features. First, we combine one numeric and one categorical feature: loan duration and housing.
+
+```{r pred-mixed, warning = FALSE}
+maxbox_res$plot_surface(
+  feature_names = c("duration", "housing"),
+  surface = "prediction"
+)
+```
+
+We can also plot two categorical features, which can help us check which combinations of the two categorical values are compatible with the descriptor.
+
+```{r pred-cat, warning = FALSE}
+maxbox_res$plot_surface(
+  feature_names = c("housing", "purpose"),
+  surface = "prediction"
+)
 ```
 
 # How to extend the package {#extension}
