@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 
 # Introduction {#introduction}
 
-Modern machine learning models often achieve high accuracy, but this often comes at the cost of being difficult to interprete. Although such trade-off might be acceptable in settings where only predictive accuracy matters, it becomes problematic in high stakes applications, such as healthcare, finance or criminal justice, where understanding the reasoning behind an individual's prediction is required, especially for building trust and ensuring fairness.
+Modern machine learning models often achieve high accuracy, but this often comes at the cost of being difficult to interpret. Although such trade-off might be acceptable in settings where only predictive accuracy matters, it becomes problematic in high stakes applications, such as healthcare, finance or criminal justice, where understanding the reasoning behind an individual's prediction is required, especially for building trust and ensuring fairness.
 
 Post-hoc interpretability methods address this issue by providing explanations for complex models after they have been trained (and without having to modify their structure). Within these, two classes can be distinguished: global explanations, which characterize the overall model behaviour, and local explanations, which focus on interpreting individual predictions.
 
@@ -31,9 +31,6 @@ The resulting hyperboxes allow for multiple types of analysis. For example, we c
 
 The `irdpackage` provides a unified and extensible framework to compute IRDs using different underlying algorithms (for example, PRIM, MaxBox, MAIRE), together with a post-processing procedure that improves the quality of the resulting regions.
 
-### Contributions
-
-\<TODO\>
 
 # Methodological Background {#background}
 
@@ -61,7 +58,7 @@ Notice that this formulation applies for both regression and classification task
 
 The search for an IRD is formalized as an optimization problem, where the three following criteria are used:
 
--   Coverage mesures how much of the feature space is covered by the hyperbox $B$. Ideally, we want $B$ to be as large as possible.
+-   Coverage measures how much of the feature space is covered by the hyperbox $B$. Ideally, we want $B$ to be as large as possible.
 
     $$
     \text{coverage}(B) = \mathbb{P}(\mathbf{x} \in B \mid \mathbf{x} \in \mathcal{X})
@@ -99,7 +96,7 @@ That is, we aim to find the largest possible hyperbox $B$ around our point of in
 
 An IRD can be interpreted as the answer to the following question:
 
-> *To what extent can the features of a particular data point be simultaneously changed while keeping the model's prediction withing a specific range?*
+> *To what extent can the features of a particular data point be simultaneously changed while keeping the model's prediction within a specific range?*
 
 A valid IRD satisfies these properties: homogeneity, meaning that all points inside the hyperbox have predictions that fall withing the desired range, and maximality, which means that the hyperbox cannot be expanded further without violating precision (predictions falling outside $Y'$).
 
@@ -179,15 +176,15 @@ The `irdpackage` provides a unified and model-agnostic framework for computing I
 
 From a user perspective, the package offers a simple interface based on two primary functions: `find_ird()` computes an IRD by selecting and running a method such as PRIM, MaxBox or MAIRE. The function `postprocess_box()` refines the learned box by applying a post-processing procedure which aims to further improve the coverage and precision.
 
-The general workflow consists on first wrapping a model in a iml::Predictor [@Molnar2018IML] and then executing a particular method through the `find_ird()` function by feeding it the `x_interest`, the desired prediction range, the method's parameters and some optional constraints. Since the Predictor object provides a common prediction interface, the package works with any machine learning model trained with different frameworks (such as `mlr3` \@[@Lang2019mlr3] or even a custom model), as long as they can be wrapped using `iml:Predictor`.
+The general workflow consists on first wrapping a model in a iml::Predictor [@Molnar2018IML] and then executing a particular method through the `find_ird()` function by feeding it the `x_interest`, the desired prediction range, the method's parameters and some optional constraints. Since the Predictor object provides a common prediction interface, the package works with any machine learning model trained with different frameworks (such as `mlr3` \@[@Lang2019mlr3] or even a custom model), as long as they can be wrapped using `iml::Predictor`.
 
 The resulting hyperbox is always returned as a `RegDesc` object, which can be inspected, evaluated and visualized.
 
-Inspired by the `counterfactuals` package [@Dandl2023Counterfactuals], `irdpackage` is built based on an R6 arquitecture @Chang2021R6, in which all IRD methods inherit from a common abstract base class called `RegDescMethod`. This class does input validation, detects the task (regression versus classification settings), manages the user's constraints such as the fixed features and wraps the final result in a standarized output object. Each concrete method only implements its own search procedure in `private$run()`.
+Inspired by the `counterfactuals` package [@Dandl2023Counterfactuals], `irdpackage` is built based on an R6 architecture @Chang2021R6, in which all IRD methods inherit from a common abstract base class called `RegDescMethod`. This class does input validation, detects the task (regression versus classification settings), manages the user's constraints such as the fixed features and wraps the final result in a standardized output object. Each concrete method only implements its own search procedure in `private$run()`.
 
 Internally, regional descriptors are represented using paradox::ParamSet objects [@Lang2022Paradox]: numeric features are described by intervals and categorical features by subsets of levels. Parameters with integer domain are also supported.
 
-The output of every method is a `RegDesc` object, which is the standarized result container. It stores the final box, the predictor, the observation of interest, the desired prediction range or class, the set of fixed (immutable) features along with the method-specific metadata and optimization history. Users can print the descriptor, evaluate its quality by assessing the metrics using sampling or the training data, and also visualize the IRD projected onto a 2D prediction surface.
+The output of every method is a `RegDesc` object, which is the standardized result container. It stores the final box, the predictor, the observation of interest, the desired prediction range or class, the set of fixed (immutable) features along with the method-specific metadata and optimization history. Users can print the descriptor, evaluate its quality by assessing the metrics using sampling or the training data, and also visualize the IRD projected onto a 2D prediction surface.
 
 Notice that the package is inherently model-agnostic. By relying on iml::Predictor, all methods can interact and probe the model using a unified prediction interface, which is independent of how the model was trained or the prediction task. Furthermore, the package is designed to support actionability constraints via the `fixed_features` argument, which both ensures that certain variables remain unchanged and reduces also the search space (and, consequently, the computational cost).
 
@@ -374,11 +371,11 @@ Also interesting from a fairness perspective, we observe that the IRD result for
 
 ### Local relevance using the range reduction
 
-It is possible to interprete IRDs by comparing the regional descriptor with the full range of each feature. According to Theorem's 1 and 2 from @Dandl2023IRD, a feature that is not relevant for the learned model, will have no reduction of its range in the IRD. On the other hand, a feature that is locally relevant will experience a reduction in its range.
+It is possible to interpret IRDs by comparing the regional descriptor with the full range of each feature. According to Theorem's 1 and 2 from @Dandl2023IRD, a feature that is not relevant for the learned model, will have no reduction of its range in the IRD. On the other hand, a feature that is locally relevant will experience a reduction in its range.
 
 For the obtained IRD, we observe that features such as `credit.amount`, `duration` and `checking.account` had a strong reduction. Particularly for duration, the original range was constrained from `[6,72]` to only `[9,44]` (the features range shrank, in a geometric sense, by about 47%). This might indicate that this feature is locally relevant for the prediction.
 
-The feature `age`, on the other hand, did not experience any reduction, meaning it can vary accross its full observed range without affecting the prediction locally. This indicates that age might not be influential in this neighborhood.
+The feature `age`, on the other hand, did not experience any reduction, meaning it can vary across its full observed range without affecting the prediction locally. This indicates that age might not be influential in this neighborhood.
 
 ```{r local-importance, echo = FALSE}
 local_range_reduction = function(box, data) {
@@ -582,7 +579,7 @@ The method `get_parameters` displays a named list of the hyperparameters used wh
 maxbox$get_parameters()
 ```
 
-### Prediction sufrance for the MaxBox predictor
+### Prediction surface for the MaxBox predictor
 
 For the learned MaxBox descriptor, we now use `surface = "prediction"`. This shows the model prediction surface together with the descriptor projection.
 
@@ -667,11 +664,11 @@ The only strict requirement is that `run()` returns a valid box representation. 
 
 New methods can benefit from reusing existing functions rather than reimplementing them. The package provides a shared `helpers.R` file with useful functions to create boxes, update the boundaries, sample new candidate points or evaluating whether the predictions fall within the desired range.
 
-The use of these helpers has the purpose of allowing developers to fully focus on implementing the optimization step of their method, as well as reduing repeated code and ensuring consistency among the implemented methods.
+The use of these helpers has the purpose of allowing developers to fully focus on implementing the optimization step of their method, as well as reducing repeated code and ensuring consistency among the implemented methods.
 
 ## Suggestions for integration
 
-For a seemless integration with the package, it is recommended that newly adapted methods follow the conventions of existing implementations. We advise to record diagnostic information such as the history of the optimization process and the number of model evaluations. This information is useful for analyzing, debugging and comparing IRD methods.
+For a seamless integration with the package, it is recommended that newly adapted methods follow the conventions of existing implementations. We advise to record diagnostic information such as the history of the optimization process and the number of model evaluations. This information is useful for analyzing, debugging and comparing IRD methods.
 
 Although this is not required, new methods can be added to the package's high-level interface (i.e. syntactic sugar functions) by extending the `find_ird()` function. This allows users to call the method using a simple parameter indicating the method's name instead of manually instantiating the object and calling `find_box()`. Such integration can be done as follows:
 
@@ -740,7 +737,7 @@ To illustrate how a new method can be integrated, we showcase how to include the
 
 In the original IRD paper [@Dandl2023IRD], Anchors are mentioned as a related hyperbox-based method, which works as a limited baseline for IRDs given that their search space is restricted because features can only be fixed to the value of the observation, left free or constrained by some pre-defined bins for numerical features. This can result in boxes that are too specific and cover too few observations, and the bins can not be adjusted during optimization. Because of these limitations, the package does not treat Anchors as a fully adapted IRD method like PRIM, MaxBox or MAIRE. But it can be adapted to showcase how an external method can be integrated into the `irdpackage` framework.
 
-Just as described before, Anchors can be incorporated by implemented a small number of required method classes and relying on the shared infrastructure. The Anchor class would then inherit from `RegDesMethod`, call `super$initialize()` in its constructure, store the method-specific parameters (such as the desired anchor precision `tau`) and include a private `run()` method that returns a `paradox::ParamSet` box.
+Just as described before, Anchors can be incorporated by implemented a small number of required method classes and relying on the shared infrastructure. The Anchor class would then inherit from `RegDescMethod`, call `super$initialize()` in its constructor, store the method-specific parameters (such as the desired anchor precision `tau`) and include a private `run()` method that returns a `paradox::ParamSet` box.
 
 ``` r
 Anchor = R6::R6Class("Anchor", inherit = RegDescMethod,
@@ -1062,7 +1059,7 @@ postprocessed_comparison
 
 Compared to the initial boxes, we can see that impurity consistently decreases, so the resulting boxes became more homogeneous. However, this comes at the cost of an increased runtime and number of model evaluations.
 
-Interesingly, the differences between methods largely disappear in terms of quality. However, as pointed, this comes at a high computational cost. MaxBox is slightly more efficient, while MAIRE and PRIM require more time. But overall, all methods converge to similarly high-quality descriptors after the post-processing procedure.
+Interestingly, the differences between methods largely disappear in terms of quality. However, as pointed, this comes at a high computational cost. MaxBox is slightly more efficient, while MAIRE and PRIM require more time. But overall, all methods converge to similarly high-quality descriptors after the post-processing procedure.
 
 Here, we show the side-by-side comparison of the post-processed hyperboxes.
 
