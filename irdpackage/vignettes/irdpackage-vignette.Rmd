@@ -791,6 +791,297 @@ Once the search routine is implemented, the user can run `find_ird(..., method =
 
 # Small comparison of IRD methods {#benchmarking}
 
+In this section, we briefly compare the three main methods implemented in the package: PRIM, MaxBox and MAIRE. For this, we use the same set up as before: the same dataset, same trained model, the same observation of interest and the same desired prediction range. All methods are run with the default parameters.
+
+For each method, we will compute the initial IRD, then apply post-processing and compare the results using a few practical metrics.
+
+We focus on the following quantities:
+
+-   impurity: fraction of sampled points inside the box whose predictions fall outside the desired range. Lower is better, as we want homogeneous boxes.
+
+-   train_coverage: fraction of training data covered by the box. Higher means a larger box.
+
+-   sampled_coverage: coverage measured using newly sampled points from the largest local box.
+
+-   runtime (`stage_time_sec`, `total_time_sec`): how long the method takes in a stage or total (initial method + post-processing). All experiments were run on a laptop with an AMD Ryzen 5 CPU (16 GB RAM), using R version 4.5.2.
+
+-   model calls (`calls_fhat`): how many times the model was evaluated.
+
+An ideal method will have a low impurity (high precision), high coverage and a reasonable run time.
+
+## Results
+
+```{r helpers, echo = FALSE}
+
+desired_range = c(0.3, 0.6)
+fit_seed = 12005L
+evaluation_seed = 12005L
+evaluation_n = 1000L
+coverage_seed = 12005L
+coverage_n = 5000L
+
+method_specs = list(
+  PRIM = list(
+    method = "prim",
+    method_args = list(quiet = TRUE)
+  ),
+  Maire = list(
+    method = "maire",
+    method_args = list(
+      num_of_iterations = 100L,
+      convergence = TRUE,
+      quiet = TRUE,
+      strategy = "traindata"
+    )
+  ),
+  MaxBox = list(
+    method = "maxbox",
+    method_args = list(
+      quiet = TRUE,
+      strategy = "traindata"
+    )
+  )
+)
+
+postprocess_args = list(
+  quiet = TRUE
+)
+
+sampled_coverage = function(result, n_samples, seed) {
+  set.seed(seed)
+
+  reference_box = get_max_box(
+    x_interest = result$x_interest,
+    fixed_features = result$fixed_features,
+    predictor = result$predictor,
+    desired_range = result$desired_range,
+    param_set = make_param_set(result$predictor$data$X),
+    resolution = 500L
+  )
+
+  sampled = SamplerUnif$new(reference_box)$sample(n = n_samples)$data
+  sampled = reference_box$extra_trafo(x = sampled, predictor = result$predictor)
+
+  mean(identify_in_box(result$box, sampled))
+}
+
+summarise_descriptor = function(method,
+                                stage,
+                                result,
+                                runtime,
+                                eval_n,
+                                seed,
+                                coverage_n,
+                                coverage_seed,
+                                total_runtime = NULL,
+                                total_calls_fhat = NULL) {
+  set.seed(seed)
+  sampled_eval = result$evaluate(n_samples = eval_n)
+  train_eval = result$evaluate_train()
+  sampled_cov = sampled_coverage(
+    result = result,
+    n_samples = coverage_n,
+    seed = coverage_seed
+  )
+
+  if (is.null(total_runtime)) {
+    total_runtime = unname(runtime[["elapsed"]])
+  }
+  if (is.null(total_calls_fhat)) {
+    total_calls_fhat = result$calls_fhat
+  }
+
+  data.frame(
+    method = method,
+    stage = stage,
+    stage_time_sec = unname(runtime[["elapsed"]]),
+    total_time_sec = total_runtime,
+    impurity = unname(sampled_eval[["impurity"]]),
+    dist = unname(sampled_eval[["dist"]]),
+    train_precision = unname(train_eval[["precision"]]),
+    train_coverage = unname(train_eval[["coverage"]]),
+    sampled_coverage = sampled_cov,
+    stage_calls_fhat = result$calls_fhat,
+    total_calls_fhat = total_calls_fhat,
+    stringsAsFactors = FALSE
+  )
+}
+
+fit_method = function(label, spec) {
+  set.seed(fit_seed)
+  runtime = system.time({
+    result = find_ird(
+      predictor = pred,
+      x_interest = x_interest,
+      method = spec$method,
+      desired_range = desired_range,
+      method_args = spec$method_args
+    )
+  })
+
+  list(
+    result = result,
+    runtime = runtime,
+    summary = summarise_descriptor(
+      method = label,
+      stage = "initial",
+      result = result,
+      runtime = runtime,
+      eval_n = evaluation_n,
+      seed = evaluation_seed,
+      coverage_n = coverage_n,
+      coverage_seed = coverage_seed
+    )
+  )
+}
+
+postprocess_method = function(label, initial) {
+  set.seed(fit_seed)
+  runtime = system.time({
+    post = postprocess_box(
+      object = initial$result,
+      desired_range = desired_range,
+      method_args = postprocess_args
+    )
+  })
+
+  list(
+    result = post,
+    summary = summarise_descriptor(
+      method = label,
+      stage = "postprocessed",
+      result = post,
+      runtime = runtime,
+      eval_n = evaluation_n,
+      seed = evaluation_seed,
+      coverage_n = coverage_n,
+      coverage_seed = coverage_seed,
+      total_runtime = unname(initial$runtime[["elapsed"]]) +
+        unname(runtime[["elapsed"]]),
+      total_calls_fhat = initial$result$calls_fhat + post$calls_fhat
+    )
+  )
+}
+```
+
+### Initial descriptors
+
+```{r bm-initial, echo = FALSE, warning=FALSE, message = FALSE}
+
+initial_results = Map(fit_method, names(method_specs), method_specs)
+
+initial_comparison = do.call(
+  rbind,
+  lapply(initial_results, function(x) x$summary)
+)
+rownames(initial_comparison) = NULL
+cols_to_round = c(
+  "stage_time_sec",
+  "total_time_sec",
+  "impurity",
+  "dist",
+  "train_precision",
+  "train_coverage",
+  "sampled_coverage"
+)
+initial_comparison[cols_to_round] = lapply(
+  initial_comparison[cols_to_round],
+  round,
+  digits = 4L
+)
+
+knitr::kable(initial_comparison, caption = "Comparison of IRD methods for German credit dataset, using one explicand.")
+```
+
+We observe that PRIM produces the largest box (highest coverage), but with relatively high impurity (25.9%). However, it has a relatively high impurity of 25.9%, which means the region is less homogeneous. MaxBox is similar to PRIM in this sense. It has slightly higher coverage but the highest impurity at 0.320, indicating that its descriptor is less stable. MAIRE, on the other hand, achieves much lower impurity at 0.071 and has smaller prediction deviation. This means it finds both a more precise and stable region. However, it covers very few data points. In terms of speed, MAIRE is much slower, taking about 54 seconds compared to 8-11 seconds for the other methods. All methods use a similar number of model calls.
+
+Let us also explore the resulting hyperboxes, by placing the descriptors side by side. The table below shows one row per feature. Each method column shows the range selected by that method for the same feature.
+
+```{r helpers-side, echo = FALSE}
+descriptor_ranges = function(results, suffix = "") {
+  boxes = lapply(results, function(x) describe_box(x$result$box))
+
+  tables = Map(
+    function(box, method) {
+      out = data.frame(
+        feature = box$id,
+        range = box$range,
+        stringsAsFactors = FALSE
+      )
+      names(out) = c("feature", paste0(method, suffix))
+      out
+    },
+    boxes,
+    names(results)
+  )
+
+  ranges = Reduce(
+    function(left, right) merge(left, right, by = "feature", all = TRUE),
+    tables
+  )
+
+  ranges[order(ranges$feature), ]
+}
+```
+
+```{r side-comparison, echo = FALSE}
+initial_descriptor_ranges = descriptor_ranges(
+  results = initial_results
+)
+rownames(initial_descriptor_ranges) = NULL
+
+knitr::kable(initial_descriptor_ranges, caption = "Comparison of the regional descriptors obtained by the different methods.")
+```
+
+Following from the metrics, we observe that PRIM gives broader, more permissive regions (see `age`). MAIRE produces the most restrictive (and, as a consequence, precise) box. And MaxBox lies in between.
+
+### Post-processed descriptors
+
+Let us now explore the result after the hyperboxes have been refined using post-processing.
+
+```{r bm-post}
+post_results = Map(
+  postprocess_method,
+  names(initial_results),
+  initial_results
+)
+
+postprocessed_comparison = do.call(
+  rbind,
+  lapply(post_results, function(x) x$summary)
+)
+rownames(postprocessed_comparison) = NULL
+postprocessed_comparison[cols_to_round] = lapply(
+  postprocessed_comparison[cols_to_round],
+  round,
+  digits = 4L
+)
+
+postprocessed_comparison
+```
+
+Compared to the initial boxes, we can see that impurity consistently decreases, so the resulting boxes became more homogeneous. However, this comes at the cost of an increased runtime and number of model evaluations.
+
+Interesingly, the differences between methods largely disappear in terms of quality. However, as pointed, this comes at a high computational cost. MaxBox is slightly more efficient, while MAIRE and PRIM require more time. But overall, all methods converge to similarly high-quality descriptors after the post-processing procedure.
+
+Here, we show the side-by-side comparison of the post-processed hyperboxes.
+
+```{r side-post, echo = FALSE}
+postprocessed_descriptor_ranges = descriptor_ranges(
+  results = post_results,
+  suffix = "_postprocessed"
+)
+rownames(postprocessed_descriptor_ranges) = NULL
+
+knitr::kable(postprocessed_descriptor_ranges, caption = "Comparison of the post-processed regional descriptors.")
+```
+
+We observe that post-processing suggests tighter intervals for most variables, especially for numeric features like `credit.amount` and `duration`.
+
+For some variables, the methods now mostly agree. For example, age is expanded to the full range [19, 75] for both PRIM and MAIRE, which suggests that age is not important locally. MaxBox is a bit more restrictive, with a range of [19, 22].
+
+However, there are still differences for other features. MAIRE still gives the most restrictive boxes. For example, it fixes `housing`, `job`, `purpose` and `saving.accounts` to a single category. It is also worth mentioning that `sex` is fixed to only `{female}` in PRIM, while MAIRE and MaxBox allow both values, so the methods exhibit different views on how important `sex` is locally for the prediction.
+
 # Appendix {#appendix}
 
 ## Appendix A. Full run() implementation for Anchor Method {#appendixA}
